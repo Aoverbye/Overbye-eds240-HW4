@@ -166,9 +166,6 @@ ggplot() +
              aes(x = longitude, y = latitude, color = carrier), 
              size = 3, alpha = 0.7) +
   # Add labels for airport IATA codes
-  geom_text(data = geo_planes2024, 
-            aes(x = longitude, y = latitude, label = iata), 
-            vjust = -1, size = 3) +
   theme(legend.position = "none")
   theme_minimal() +
   labs(title = "Airport Locations in the Contiguous USA",
@@ -197,6 +194,29 @@ ggplot(flight_counts, aes(x = carriergroup, y = count, fill = carriergroup)) +
   theme_minimal() +
   scale_fill_manual(values = c("Scheduled" = "blue", "Charter" = "red")) +
   scale_x_continuous(labels = scales::comma)
+```
+
+```{r}
+# Filter geo_planes2024 to include only airports in the contiguous USA
+geo_planes2024 <- geo_planes2024 %>%
+  filter(latitude >= 24, latitude <= 50,  # Contiguous U.S. latitude range
+         longitude >= -125, longitude <= -66)  # Contiguous U.S. longitude range
+
+# Plot the map with airport locations
+ggplot() +
+  # Plot the USA basemap
+  geom_polygon(data = usa_map, aes(x = long, y = lat, group = group), 
+               fill = "lightgray", color = "black") +
+  # Add airport locations as points
+  geom_point(data = geo_planes2024, 
+             aes(x = longitude, y = latitude, color = carrier), 
+             size = 3, alpha = 0.7) +
+  coord_fixed(1.3) +  # Fix aspect ratio
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(title = "Airport Locations in the Contiguous USA",
+       x = "Longitude", y = "Latitude", color = "Carrier")
+
 ```
 
 IMPORTANT: If you have a downloaded data file saved to your repo (e.g. you’re not reading in your data directly from online, from a server, etc.) be sure to add your data folder / file to your .gitignore, particularly if this file is large.
