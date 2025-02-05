@@ -1,0 +1,65 @@
+---
+title: "HW2-exploration.qmd"
+author: "Amanda Overbye"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+Create an file named, HW2-exploration.qmd within your lastName-eds240-HW4 repo and add appropriate YAML fields.
+
+#2a. Review HW #4 instructions
+Please begin by re-reading HW #4 in full as a reminder of the options, goals, and requirements for your final class assignment.
+
+# 2b. Import & wrangle data, then create exploratory data viz
+This week, you’ll focus on importing and wrangling your data (found as part of HW #1, Part II), followed by the exploratory data visualization phase. Complete the following:
+
+
+## Load necessary packages and read in your data.
+```{r}
+# Load packages
+library(tidycensus)
+library(tidyverse)
+library(ggplot2)
+library(tmap)
+library(here)
+library(janitor)
+library(usdata)
+library(tigris)
+library(sf)
+```
+
+
+Clean & wrangle your data.
+Create at least three exploratory data visualizations (but of course feel free to create more!). The goal of these visualizations is to explore your data for any potentially interesting patterns or trends, which you or may not decide to pursue further as you iterate on your final project deliverable. These plots do not need to be polished (e.g. updated theme), but it may be helpful to try arranging data to identify any trends.
+IMPORTANT: If you have a downloaded data file saved to your repo (e.g. you’re not reading in your data directly from online, from a server, etc.) be sure to add your data folder / file to your .gitignore, particularly if this file is large.
+2c. Answer questions
+After completing the above steps, answer the following questions:
+
+1. What have you learned about your data? Have any potentially interesting patterns emerged?
+2. In HW #1, you outlined some questions that you wanted to answer using these data. Have you made any strides towards answering those questions? If yes, how so? If no, what next steps do you need to take (e.g. I need to create X plot type, I still need to track down Y data, I need to restructure existing data so that you can visualize it in Z ways, etc.)?
+3. What challenges do you foresee encountering with your data? These can be data wrangling and / or visualization challenges.
+Rubric (specifications)
+You must complete the following, as detailed below, to receive a “Satisfactory” mark for Assignment #2, Part II:
+
+Complete the following steps under your lastName-eds240-HW4 repo, not in GitHub Classroom:
+See details below.
+
+Perform all Part 2b steps (as described above) in your HW2-exploration.qmd file.
+Answer Part 2c questions in your HW2-exploration.qmd file. There is no set length requirement, but you must answer each question in full to receive a Satisfactory score.
+All three plot outputs should appear in your rendered doc.
+HW2-exploration.qmd should be neatly organized – this does not need to be a perfectly polished document, but sections should be clearly labeled with prose and / or annotations so that we can easily follow along.
+Code chunks should have appropriate chunk options set (e.g. code should render and execute, but warnings and messages should be suppressed, long data frames should not be printed out, etc.).
+Send your instructor (Sam Shanny-Csik) and TA (Annie Adams) a rendered version of your HW2-exploration.qmd file by 11:59pm PT on Sat 02/04/2025 following these steps:
+a. ensure that your YAML specifies these options, at a minimum:
+---
+title: "your HW #2 title"
+author: "your Name"
+date: xxxx-xx-xx
+format:
+  html:
+    embed-resources: true # this ensures that your rendered .html file is self-contained, so we (your instructors) can open it and view all your work
+---
+
+b. render your HW2-exploration.qmd file, verify that you can open the resulting HW2-exploration.html file in your browser, and that all formatting looks good
+c. save a copy of HW2-exploration.html to your Desktop, rename it it so that it has your first initial / last name at the start (e.g. SShannyCsik-HW2-exploration.html), then send it to both your instructor (Sam Shanny-Csik) and TA (Annie Adams) on Slack via direct message
