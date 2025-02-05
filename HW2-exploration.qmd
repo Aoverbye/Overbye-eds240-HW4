@@ -27,12 +27,180 @@ library(janitor)
 library(usdata)
 library(tigris)
 library(sf)
+library(scales)
+library(airportr)
+library(ggmap)
+library(maps)
 ```
 
 
+```{r}
+# Testing maps
+map_data_es <- map_data('world')[map_data('world')$region == "USA",]
+world <- worldMapEnv
+```
+
+```{r}
+# Load in the data
+freight_df <- read.csv(here("data", "International_Report_Freight_20250205.csv"))
+
+air_coords <- airports
+```
+
 Clean & wrangle your data.
+
+# Data seems pretty clean already
+Removed column type because the type for the whole file is the same
+
+```{r}
+# Clean names
+clean_freight <- freight_df %>%
+clean_names()
+clean_airports <- air_coords %>% 
+  clean_names()
+```
+
+
+```{r}
+clean_freight <- clean_freight %>% 
+  select(-type) %>% 
+```
+
+```{r}
+clean_airports <- clean_airports %>% 
+  select(-timezone, -type, -altitude, -country_code, -country_code_alpha_2, -country_code_alpha_3, -open_flights_id, -source)
+```
+
+```{r}
+# Rename column for join 
+clean_freight <- clean_freight %>% 
+  rename(iata = usg_apt)
+```
+
+
+```{r}
+# Create 2024 df to be able to test basic geographical ideas without a giant df
+freight_2024 <- clean_freight %>% 
+  filter(year == 2024) %>% 
+  filter(carriergroup == 1)
+```
+
+
+### Join the clean_airports and  freight_2024
+
+```{r}
+geo_planes2024 <- full_join(freight_2024, clean_airports)
+```
+
+```{r}
+ geo_planes2024$country
+```
+
+
+```{r}
+geo_planes2024 <- geo_planes2024 %>%
+  filter(country == "United States")
+```
+
+
 Create at least three exploratory data visualizations (but of course feel free to create more!). The goal of these visualizations is to explore your data for any potentially interesting patterns or trends, which you or may not decide to pursue further as you iterate on your final project deliverable. These plots do not need to be polished (e.g. updated theme), but it may be helpful to try arranging data to identify any trends.
+
+```{r}
+ggplot(clean_freight, aes(x = carriergroup, y = total)) +
+  geom_col() +
+  scale_x_continuous(labels = scales::comma)
+
+```
+
+```{r}
+# Summarize total flights per airport
+airport_flights <- geo_planes2024 %>%
+  group_by(iata, name, latitude, longitude) %>%
+  summarise(total_flights = sum(total, na.rm = TRUE)) %>%
+  arrange(desc(total_flights))
+
+# Get the airport with the highest flights
+top_airport <- airport_flights %>% slice(1)
+print(top_airport)
+
+```
+
+```{r}
+# Load US states data
+usa_map <- map_data("state")
+
+# Plot contiguous USA
+ggplot(data = usa_map, aes(x = long, y = lat, group = group)) +
+  geom_polygon(fill = "lightgray", color = "black") +
+  theme_minimal() +
+  labs(title = "Contiguous USA Basemap") +
+  coord_fixed(1.3)  # Fix aspect ratio
+```
+
+
+```{r}
+# Load world map data
+world_map <- map_data("world")
+
+# Create the basemap
+ggplot(data = world_map, aes(x = long, y = lat, group = group)) +
+  geom_polygon(fill = "lightgray", color = "black") +
+  theme_minimal() +
+  labs(title = "World Map Basemap") +
+  coord_fixed(1.3)  # Fix aspect ratio
+
+```
+
+```{r}
+# Ensure latitude and longitude are numeric
+geo_planes2024$latitude <- as.numeric(geo_planes2024$latitude)
+geo_planes2024$longitude <- as.numeric(geo_planes2024$longitude)
+
+# Create the basemap with airport locations
+ggplot() +
+  # Plot the USA basemap
+  geom_polygon(data = usa_map, aes(x = long, y = lat, group = group), 
+               fill = "lightgray", color = "black") +
+  # Add airport locations as points
+  geom_point(data = geo_planes2024, 
+             aes(x = longitude, y = latitude, color = carrier), 
+             size = 3, alpha = 0.7) +
+  # Add labels for airport IATA codes
+  geom_text(data = geo_planes2024, 
+            aes(x = longitude, y = latitude, label = iata), 
+            vjust = -1, size = 3) +
+  theme(legend.position = "none")
+  theme_minimal() +
+  labs(title = "Airport Locations in the Contiguous USA",
+       x = "Longitude", y = "Latitude", color = "Carrier") +
+  coord_fixed(1.3)  # Fix aspect ratio
+```
+
+# TEST
+
+```{r}
+# Convert carriergroup to a factor for better labeling
+freight_df <- freight_df %>%
+  mutate(carriergroup = factor(carriergroup, levels = c(0, 1), labels = c("Scheduled", "Charter")))
+
+# Summarize the count of each flight type
+flight_counts <- freight_df %>%
+  group_by(carriergroup) %>%
+  summarise(count = n())
+
+# Create the bar plot
+ggplot(flight_counts, aes(x = carriergroup, y = count, fill = carriergroup)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Count of Charter vs. Scheduled Flights",
+       x = "Flight Type",
+       y = "Count of Flights") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Scheduled" = "blue", "Charter" = "red")) +
+  scale_x_continuous(labels = scales::comma)
+```
+
 IMPORTANT: If you have a downloaded data file saved to your repo (e.g. you’re not reading in your data directly from online, from a server, etc.) be sure to add your data folder / file to your .gitignore, particularly if this file is large.
+
 2c. Answer questions
 After completing the above steps, answer the following questions:
 
