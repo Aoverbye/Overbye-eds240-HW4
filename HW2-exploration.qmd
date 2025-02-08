@@ -1,18 +1,26 @@
 ---
-title: "HW2-exploration.qmd"
+title: "HW2-exploration"
 author: "Amanda Overbye"
-format: html
-editor: visual
+date: 02/07/2025
+toc: true
 editor_options: 
   chunk_output_type: console
+editor: 
+  markdown: 
+    wrap: 72
+execute: 
+  eval: true
+  warning: false
+format:
+  html:
+    embed-resources: true
+    toc: true
+    code-fold: true
 ---
-Create an file named, HW2-exploration.qmd within your lastName-eds240-HW4 repo and add appropriate YAML fields.
 
-#2a. Review HW #4 instructions
-Please begin by re-reading HW #4 in full as a reminder of the options, goals, and requirements for your final class assignment.
-
-# 2b. Import & wrangle data, then create exploratory data viz
-This week, you’ll focus on importing and wrangling your data (found as part of HW #1, Part II), followed by the exploratory data visualization phase. Complete the following:
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, code_folding = FALSE)
+```
 
 
 ## Load necessary packages and read in your data.
@@ -33,7 +41,6 @@ library(ggmap)
 library(maps)
 ```
 
-
 ```{r}
 # Testing maps
 map_data_es <- map_data('world')[map_data('world')$region == "USA",]
@@ -47,10 +54,9 @@ freight_df <- read.csv(here("data", "International_Report_Freight_20250205.csv")
 air_coords <- airports
 ```
 
-Clean & wrangle your data.
+# Cleaning & Wrangling
 
-# Data seems pretty clean already
-Removed column type because the type for the whole file is the same
+ **Data seems pretty clean already**
 
 ```{r}
 # Clean names
@@ -60,13 +66,14 @@ clean_airports <- air_coords %>%
   clean_names()
 ```
 
-
 ```{r}
+# Remove type column
 clean_freight <- clean_freight %>% 
-  select(-type) %>% 
+  select(-type)
 ```
 
 ```{r}
+# Remove all the columns I don't need
 clean_airports <- clean_airports %>% 
   select(-timezone, -type, -altitude, -country_code, -country_code_alpha_2, -country_code_alpha_3, -open_flights_id, -source)
 ```
@@ -77,7 +84,6 @@ clean_freight <- clean_freight %>%
   rename(iata = usg_apt)
 ```
 
-
 ```{r}
 # Create 2024 df to be able to test basic geographical ideas without a giant df
 freight_2024 <- clean_freight %>% 
@@ -85,31 +91,28 @@ freight_2024 <- clean_freight %>%
   filter(carriergroup == 1)
 ```
 
-
 ### Join the clean_airports and  freight_2024
 
 ```{r}
+# Join the data sets
 geo_planes2024 <- full_join(freight_2024, clean_airports)
 ```
 
 ```{r}
- geo_planes2024$country
-```
-
-
-```{r}
+# Filter to just the US
 geo_planes2024 <- geo_planes2024 %>%
   filter(country == "United States")
 ```
 
+# Three Exploratory Plots
 
-Create at least three exploratory data visualizations (but of course feel free to create more!). The goal of these visualizations is to explore your data for any potentially interesting patterns or trends, which you or may not decide to pursue further as you iterate on your final project deliverable. These plots do not need to be polished (e.g. updated theme), but it may be helpful to try arranging data to identify any trends.
+## The Basic Bar Graph
 
 ```{r}
+# Create basic bar plot based on carrier group
 ggplot(clean_freight, aes(x = carriergroup, y = total)) +
   geom_col() +
   scale_x_continuous(labels = scales::comma)
-
 ```
 
 ```{r}
@@ -122,34 +125,15 @@ airport_flights <- geo_planes2024 %>%
 # Get the airport with the highest flights
 top_airport <- airport_flights %>% slice(1)
 print(top_airport)
-
 ```
 
 ```{r}
 # Load US states data
 usa_map <- map_data("state")
-
-# Plot contiguous USA
-ggplot(data = usa_map, aes(x = long, y = lat, group = group)) +
-  geom_polygon(fill = "lightgray", color = "black") +
-  theme_minimal() +
-  labs(title = "Contiguous USA Basemap") +
-  coord_fixed(1.3)  # Fix aspect ratio
 ```
 
-
-```{r}
-# Load world map data
-world_map <- map_data("world")
-
-# Create the basemap
-ggplot(data = world_map, aes(x = long, y = lat, group = group)) +
-  geom_polygon(fill = "lightgray", color = "black") +
-  theme_minimal() +
-  labs(title = "World Map Basemap") +
-  coord_fixed(1.3)  # Fix aspect ratio
-
-```
+## The Maps of Airports
+### Map 1
 
 ```{r}
 # Ensure latitude and longitude are numeric
@@ -157,7 +141,7 @@ geo_planes2024$latitude <- as.numeric(geo_planes2024$latitude)
 geo_planes2024$longitude <- as.numeric(geo_planes2024$longitude)
 
 # Create the basemap with airport locations
-ggplot() +
+ug <- ggplot() +
   # Plot the USA basemap
   geom_polygon(data = usa_map, aes(x = long, y = lat, group = group), 
                fill = "lightgray", color = "black") +
@@ -166,35 +150,16 @@ ggplot() +
              aes(x = longitude, y = latitude, color = carrier), 
              size = 3, alpha = 0.7) +
   # Add labels for airport IATA codes
-  theme(legend.position = "none")
-  theme_minimal() +
+  theme(legend.position = "none") +
   labs(title = "Airport Locations in the Contiguous USA",
-       x = "Longitude", y = "Latitude", color = "Carrier") +
-  coord_fixed(1.3)  # Fix aspect ratio
+       x = "Longitude", y = "Latitude", color = "Carrier")
 ```
-
-# TEST
 
 ```{r}
-# Convert carriergroup to a factor for better labeling
-freight_df <- freight_df %>%
-  mutate(carriergroup = factor(carriergroup, levels = c(0, 1), labels = c("Scheduled", "Charter")))
-
-# Summarize the count of each flight type
-flight_counts <- freight_df %>%
-  group_by(carriergroup) %>%
-  summarise(count = n())
-
-# Create the bar plot
-ggplot(flight_counts, aes(x = carriergroup, y = count, fill = carriergroup)) +
-  geom_bar(stat = "identity") +
-  labs(title = "Count of Charter vs. Scheduled Flights",
-       x = "Flight Type",
-       y = "Count of Flights") +
-  theme_minimal() +
-  scale_fill_manual(values = c("Scheduled" = "blue", "Charter" = "red")) +
-  scale_x_continuous(labels = scales::comma)
+ug
 ```
+
+### Map 2
 
 ```{r}
 # Filter geo_planes2024 to include only airports in the contiguous USA
@@ -206,48 +171,65 @@ geo_planes2024 <- geo_planes2024 %>%
 ggplot() +
   # Plot the USA basemap
   geom_polygon(data = usa_map, aes(x = long, y = lat, group = group), 
-               fill = "lightgray", color = "black") +
+               fill = "ivory", color = "brown4") +
   # Add airport locations as points
   geom_point(data = geo_planes2024, 
-             aes(x = longitude, y = latitude, color = carrier), 
-             size = 3, alpha = 0.7) +
+             aes(x = longitude, y = latitude, color = "blue4", size = total), 
+  alpha = 0.3) +
   coord_fixed(1.3) +  # Fix aspect ratio
-  theme_minimal() +
+  theme_void() +
   theme(legend.position = "none") +
   labs(title = "Airport Locations in the Contiguous USA",
        x = "Longitude", y = "Latitude", color = "Carrier")
 
 ```
 
-IMPORTANT: If you have a downloaded data file saved to your repo (e.g. you’re not reading in your data directly from online, from a server, etc.) be sure to add your data folder / file to your .gitignore, particularly if this file is large.
+## Data filtering and grouping for graph 3
+
+```{r}
+# Create df with avg for total for each year and split carriergroup
+time_data <- clean_freight %>%
+  group_by(year, carriergroup) %>%   # Group by year
+  summarise(mean_flights = mean(total, na.rm = TRUE),.groups = "drop") %>% 
+  pivot_wider(names_from = carriergroup, values_from = mean_flights) %>% 
+  rename(domestic = '1', foreign = '0')
+```
+
+
+## The Timeline Graph
+
+
+**Random notes that I will forget if I delete, please ignore**
+Carrier Group Code - 1 denotes US domestic air carriers, 0 denotes foreign air carriers
+A “foreign air carrier” is defined by 49 U.S.C. 40102(21) as “a person, not a citizen of the United States, undertaking by any means, directly or indirectly, to provide foreign air transportation.”
+so the "foreign flights" are flights by companies not owned in the usa
+
+	
+Total Metric flown by scheduled service and charter operations
+
+```{r}
+ggplot(time_data, aes(year)) + 
+  geom_line(aes(y = domestic, colour = "Domestic Flights")) +
+  geom_line(aes(y = foreign, colour = "Foreign Flights")) +
+  labs(title = "Tons of Domestic Freigh Flight Metrics compared to international",
+    subtitle = "air freight metric traveling between international points and U.S. airports.")
+```
+
+# Answering Questions
+
 
 2c. Answer questions
 After completing the above steps, answer the following questions:
 
 1. What have you learned about your data? Have any potentially interesting patterns emerged?
+
+I was surprised how much more international flights/flight metrics there are. I was also surprised that flight metrics are not a clearly calculated thing. The most suprising to me is the timeline chart because it shows a peak right around 2020, which is when the pandemic was, but the spike starts before the pandemic, but it also doesn't seem to necessarily be stopped by the pandemic. It looks like domestic flights dipped right around the time of the 2008 housing crash, but the international flights are not as impacted.
+
 2. In HW #1, you outlined some questions that you wanted to answer using these data. Have you made any strides towards answering those questions? If yes, how so? If no, what next steps do you need to take (e.g. I need to create X plot type, I still need to track down Y data, I need to restructure existing data so that you can visualize it in Z ways, etc.)?
+
+I think these graphs brought up good questions regarding whos going where and why. I will need to put more time into the map feature. I think the dips and peaks in the timeline will be very interesting to explore, especially seeing if they impacted charter flights as much as planned flights. I would expect to see a bump in charters are the pandemic, perhaps. 
+
 3. What challenges do you foresee encountering with your data? These can be data wrangling and / or visualization challenges.
-Rubric (specifications)
-You must complete the following, as detailed below, to receive a “Satisfactory” mark for Assignment #2, Part II:
 
-Complete the following steps under your lastName-eds240-HW4 repo, not in GitHub Classroom:
-See details below.
+I am realizing there may be some trouble defining "flight metrics." What I have found so far is that it seems to be a fancy equation that includes fuel, open space on the plane, and how much freight was being carried. There are also a lot of airports in the world, so organizing those will be a challenge. 
 
-Perform all Part 2b steps (as described above) in your HW2-exploration.qmd file.
-Answer Part 2c questions in your HW2-exploration.qmd file. There is no set length requirement, but you must answer each question in full to receive a Satisfactory score.
-All three plot outputs should appear in your rendered doc.
-HW2-exploration.qmd should be neatly organized – this does not need to be a perfectly polished document, but sections should be clearly labeled with prose and / or annotations so that we can easily follow along.
-Code chunks should have appropriate chunk options set (e.g. code should render and execute, but warnings and messages should be suppressed, long data frames should not be printed out, etc.).
-Send your instructor (Sam Shanny-Csik) and TA (Annie Adams) a rendered version of your HW2-exploration.qmd file by 11:59pm PT on Sat 02/04/2025 following these steps:
-a. ensure that your YAML specifies these options, at a minimum:
----
-title: "your HW #2 title"
-author: "your Name"
-date: xxxx-xx-xx
-format:
-  html:
-    embed-resources: true # this ensures that your rendered .html file is self-contained, so we (your instructors) can open it and view all your work
----
-
-b. render your HW2-exploration.qmd file, verify that you can open the resulting HW2-exploration.html file in your browser, and that all formatting looks good
-c. save a copy of HW2-exploration.html to your Desktop, rename it it so that it has your first initial / last name at the start (e.g. SShannyCsik-HW2-exploration.html), then send it to both your instructor (Sam Shanny-Csik) and TA (Annie Adams) on Slack via direct message
