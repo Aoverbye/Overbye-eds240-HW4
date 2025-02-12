@@ -1,27 +1,103 @@
 ---
 title: "HW3-drafting-viz"
 author: "Amanda Overbye"
-format: html
-editor: visual
+date: 02/12/2025
+toc: true
+editor_options: 
+  chunk_output_type: console
+editor: 
+  markdown: 
+    wrap: 72
+execute: 
+  eval: true
+  warning: false
+format:
+  html:
+    embed-resources: true
+    toc: true
+    code-fold: true
 ---
 
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
-```{r}
-1 + 1
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, code_folding = FALSE)
 ```
 
-You can add options to executable code like this
+# Questions & Answers
+
+**1. Which option do you plan to pursue?**
+
+**2. Restate your question(s). Has this changed at all since HW #1? If
+yes, how so?**
+
+**3. Explain which variables from your data set(s) you will use to
+answer your question(s), and how.**
+
+**4. Find at least two data visualizations that you could (potentially)
+borrow / adapt pieces from. Link to them or download and embed them into
+your .qmd file, and explain which elements you might borrow (e.g. the
+graphic form, legend design, layout, etc.)**
+
+**5. Hand-draw your anticipated visualizations, then take a photo of
+your drawing(s) and embed it in your rendered .qmd file – note that
+these are not exploratory visualizations, but rather your plan for your
+final visualizations that you will eventually polish and submit with**
+
+**6 Mock up all of your hand drawn visualizations using code.**
+
+**7. Answer the following questions:**
+
+a.  *What challenges did you encounter or anticipate encountering as you
+    continue to build / iterate on your visualizations in R? If you
+    struggled with mocking up any of your three visualizations (from #6,
+    above), describe those challenges here.*
+b.  *What ggplot extension tools / packages do you need to use to build
+    your visualizations? Are there any that we haven’t covered in class
+    that you’ll be learning how to use for your visualizations?*
+c.  *What feedback do you need from the instructional team and / or your
+    peers to ensure that your intended message is clear?*
+
+## Load necessary packages and read in your data.
 
 ```{r}
-#| echo: false
-2 * 2
+# Load packages
+library(tidycensus)
+library(tidyverse)
+library(ggplot2)
+library(tmap)
+library(here)
+library(janitor)
+library(usdata)
+library(tigris)
+library(sf)
+library(scales)
+library(airportr)
+library(ggmap)
+library(maps)
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+```{r}
+# Testing maps
+map_data_es <- map_data('world')[map_data('world')$region == "USA",]
+world <- worldMapEnv
+```
+
+#### Link to data
+
+https://data.transportation.gov/Aviation/International_Report_Freight/u4sg-r5vg/about_data
+
+```{r}
+# Load in the data
+freight_df <- read.csv(here("data", "International_Report_Freight_20250205.csv"))
+
+air_coords <- airports
+```
+
+# Hand-drawn anticipated visualizations
+
+*a sketch of your infographic (which should include at least three
+component visualizations) if you are pursuing option 1 a sketch of all
+three separate visualizations if you are pursuing option 2 a sketch of
+the approved number of visualizations, as outlined in your proposal, if
+you are pursuing option 3*
+
+# Mock up of hand drawn visualizations using code
