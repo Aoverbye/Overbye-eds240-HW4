@@ -85,11 +85,34 @@ world <- worldMapEnv
 
 https://data.transportation.gov/Aviation/International_Report_Freight/u4sg-r5vg/about_data
 
+*More information*
+
+https://www.transtats.bts.gov/freight.asp
+
 ```{r}
 # Load in the data
-freight_df <- read.csv(here("data", "International_Report_Freight_20250205.csv"))
+freight2024 <- read.csv(here("data", "flights2024.csv")) %>% 
+  filter(FREIGHT != 0)
 
 air_coords <- airports
+```
+
+```{r}
+# Function for reading in CSVs
+read <- function(year) {
+  file_name <- paste0("flights", year, ".csv") 
+  file_path <- here("data", file_name) 
+  
+  # Read and filter dataset
+  df <- read.csv(file_path) %>%
+    filter(FREIGHT != 0)
+  
+  return(df)
+}
+```
+
+```{r}
+freight2023 <- read(2023)
 ```
 
 # Hand-drawn anticipated visualizations
