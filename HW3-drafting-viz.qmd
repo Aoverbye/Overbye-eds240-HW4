@@ -73,6 +73,7 @@ library(scales)
 library(airportr)
 library(ggmap)
 library(maps)
+library(patchwork) 
 ```
 
 ```{r}
@@ -105,15 +106,105 @@ read <- function(year) {
   
   # Read and filter dataset
   df <- read.csv(file_path) %>%
-    filter(FREIGHT != 0)
+    filter(FREIGHT != 0) %>% 
+    clean_names()
   
   return(df)
 }
 ```
 
+
+```{r}
+# Function for reading in CSVs
+test <- function(year) {
+  file_name <- paste0("flights", year, ".csv") 
+  file_path <- here("data", file_name) 
+  
+  # Read and filter dataset
+  df <- read.csv(file_path) %>%
+    filter(FREIGHT != 0) %>%
+    
+    clean_names() %>% 
+    
+  return(df)
+}
+```
+
+
 ```{r}
 freight2023 <- read(2023)
 ```
+
+```{r}
+freight2023 <- read(2023)
+freight2022 <- read(2022)
+freight2021 <- read(2021)
+freight2020 <- read(2020)
+freight2019 <- read(2019)
+freight2018 <- read(2018)
+freight2017 <- read(2017)
+freight2016 <- read(2016)
+freight2015 <- read(2015)
+freight2014 <- read(2014)
+```
+
+clean_counties <- clean_counties %>% 
+  filter(!state %in% c("American Samoa"
+
+```{r}
+# top  10 questions
+top_10 <- freight2023 %>%
+  filter(!origin_country_name %in% "United States") %>% 
+  count(origin_country_name, sort = TRUE) %>% 
+  slice_max(n, n = 10) %>% 
+  arrange(desc(n)) 
+```
+
+### Plot Countries
+
+```{r}
+country_plot <- ggplot(top_10, aes(x = fct_reorder(origin_country_name,desc(n)),
+                   y = n, 
+                   fill = origin_country_name)) +
+  geom_col() +
+  theme_void() +
+  theme(legend.position = "none")
+```
+
+### Plot timeline
+
+```{r}
+# TEST
+# Step 1: Find the top 5 countries with the highest yearly flight count
+top_5_countries <- freight2023 %>%
+  filter(!origin_country_name %in% "United States") %>% 
+  count(origin_country_name, sort = TRUE) %>%  # Count total flights per country
+  slice_max(n, n = 5) %>%  # Select top 5 countries
+  pull(origin_country_name)  # Extract country names as a vector
+
+# Step 2: Get monthly flight counts for only the top 5 countries
+top_5_monthly <- freight2023 %>%
+  filter(origin_country_name %in% top_5_countries) %>%  # Keep only top 5 countries
+  count(origin_country_name, month) %>%  # Count flights per month
+  arrange(origin_country_name, month) %>%   # Sort results
+pivot_wider(names_from = origin_country_name, values_from = n, values_fill = 0) %>%  
+  arrange(month)
+```
+
+The plotting
+
+```{r}
+timeline <- ggplot(top_5_monthly, aes(month)) + 
+  geom_line(aes(y = Mexico, colour = "Mexico")) +
+  geom_line(aes(y = Japan, colour = "Japan")) +
+  geom_line(aes(y = Canada, colour = "Canada")) +
+  geom_line(aes(y = Germany, colour = "Germany"))+
+  labs(title = "Tons of Domestic Freigh Flight Metrics compared to international",
+    subtitle = "air freight metric traveling between international points and U.S. airports.") +
+    theme_void()
+```
+
+
 
 # Hand-drawn anticipated visualizations
 
@@ -124,3 +215,72 @@ the approved number of visualizations, as outlined in your proposal, if
 you are pursuing option 3*
 
 # Mock up of hand drawn visualizations using code
+
+## Create base plot
+```{r}
+plot_base <- ggplot() +
+  
+  # Add labels, subtitles, and caption to plot
+  labs(
+    title = "Airplanes & Freight",
+    subtitle = "Airplanes carry a lot of freight different places",
+    caption = "they can flY!"
+    ) +
+  
+  # apply a completely empty theme ----
+  theme_void() +
+  
+  # further customize theme ----
+  theme(
+    
+   # Set preferences for text including font and size
+    text = element_text(size = 16, 
+                        lineheight = 0.3, 
+                        color = "black"),
+    
+    # Fill in the background with color
+    
+    # make plot background black
+    plot.background = element_rect(fill = "lightblue1", 
+                                   color = "lightblue1"),
+    
+    # Plot the title and add text preferences
+    plot.title = element_text(size = 42, 
+                              face = "bold", 
+                              hjust = 0.5, 
+                              margin = margin(b = 10)),
+    
+    # Plot subtitle and add text preferences
+    plot.subtitle = element_text(hjust = 0.5, 
+                                 margin = margin(b = 20)),
+    
+    # format plot caption using {ggtext} to render fontawesome icons ----
+    plot.caption = ggtext::element_markdown(face = "italic",
+                                            color = "white",
+                                            hjust = 0.5,
+                                            margin = margin(t = 20)),
+
+    # Add margins and space to the plot
+    plot.margin = margin(b = 20, t = 50, r = 50, l = 50)
+    
+  )
+```
+
+```{r}
+plot_base
+```
+
+# Add elements together!
+
+```{r}
+plot_final <- plot_base +
+  
+  # Lay out the order plots will be placed on the graph and set their coordinates
+  inset_element(country_plot, left = 0, right = .5, top = .5, bottom = 0)+
+  inset_element(timeline, left = 0, right = .5, top = 1, bottom = .5)
+```
+
+```{r}
+plot_final
+```
+
