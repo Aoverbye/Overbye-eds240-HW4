@@ -22,8 +22,8 @@ format:
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, code_folding = FALSE)
 ```
 
-
 ## Load necessary packages and read in your data.
+
 ```{r}
 # Load packages
 library(tidycensus)
@@ -56,7 +56,7 @@ air_coords <- airports
 
 # Cleaning & Wrangling
 
- **Data seems pretty clean already**
+**Data seems pretty clean already**
 
 ```{r}
 # Clean names
@@ -91,7 +91,7 @@ freight_2024 <- clean_freight %>%
   filter(carriergroup == 1)
 ```
 
-### Join the clean_airports and  freight_2024
+### Join the clean_airports and freight_2024
 
 ```{r}
 # Join the data sets
@@ -133,6 +133,7 @@ usa_map <- map_data("state")
 ```
 
 ## The Maps of Airports
+
 ### Map 1
 
 ```{r}
@@ -178,7 +179,7 @@ ggplot() +
   alpha = 0.3) +
   coord_fixed(1.3) +  # Fix aspect ratio
   theme_void() +
-  theme(legend.position = "none") +
+  #theme(legend.position = "none") +
   labs(title = "Airport Locations in the Contiguous USA",
        x = "Longitude", y = "Latitude", color = "Carrier")
 
@@ -195,16 +196,15 @@ time_data <- clean_freight %>%
   rename(domestic = '1', foreign = '0')
 ```
 
-
 ## The Timeline Graph
 
+**Random notes that I will forget if I delete, please ignore** Carrier
+Group Code - 1 denotes US domestic air carriers, 0 denotes foreign air
+carriers A “foreign air carrier” is defined by 49 U.S.C. 40102(21) as “a
+person, not a citizen of the United States, undertaking by any means,
+directly or indirectly, to provide foreign air transportation.” so the
+"foreign flights" are flights by companies not owned in the usa
 
-**Random notes that I will forget if I delete, please ignore**
-Carrier Group Code - 1 denotes US domestic air carriers, 0 denotes foreign air carriers
-A “foreign air carrier” is defined by 49 U.S.C. 40102(21) as “a person, not a citizen of the United States, undertaking by any means, directly or indirectly, to provide foreign air transportation.”
-so the "foreign flights" are flights by companies not owned in the usa
-
-	
 Total Metric flown by scheduled service and charter operations
 
 ```{r}
@@ -217,19 +217,40 @@ ggplot(time_data, aes(year)) +
 
 # Answering Questions
 
+2c. Answer questions After completing the above steps, answer the
+following questions:
 
-2c. Answer questions
-After completing the above steps, answer the following questions:
+1.  What have you learned about your data? Have any potentially
+    interesting patterns emerged?
 
-1. What have you learned about your data? Have any potentially interesting patterns emerged?
+I was surprised how much more international flights/flight metrics there
+are. I was also surprised that flight metrics are not a clearly
+calculated thing. The most suprising to me is the timeline chart because
+it shows a peak right around 2020, which is when the pandemic was, but
+the spike starts before the pandemic, but it also doesn't seem to
+necessarily be stopped by the pandemic. It looks like domestic flights
+dipped right around the time of the 2008 housing crash, but the
+international flights are not as impacted.
 
-I was surprised how much more international flights/flight metrics there are. I was also surprised that flight metrics are not a clearly calculated thing. The most suprising to me is the timeline chart because it shows a peak right around 2020, which is when the pandemic was, but the spike starts before the pandemic, but it also doesn't seem to necessarily be stopped by the pandemic. It looks like domestic flights dipped right around the time of the 2008 housing crash, but the international flights are not as impacted.
+2.  In HW #1, you outlined some questions that you wanted to answer
+    using these data. Have you made any strides towards answering those
+    questions? If yes, how so? If no, what next steps do you need to
+    take (e.g. I need to create X plot type, I still need to track down
+    Y data, I need to restructure existing data so that you can
+    visualize it in Z ways, etc.)?
 
-2. In HW #1, you outlined some questions that you wanted to answer using these data. Have you made any strides towards answering those questions? If yes, how so? If no, what next steps do you need to take (e.g. I need to create X plot type, I still need to track down Y data, I need to restructure existing data so that you can visualize it in Z ways, etc.)?
+I think these graphs brought up good questions regarding whos going
+where and why. I will need to put more time into the map feature. I
+think the dips and peaks in the timeline will be very interesting to
+explore, especially seeing if they impacted charter flights as much as
+planned flights. I would expect to see a bump in charters are the
+pandemic, perhaps.
 
-I think these graphs brought up good questions regarding whos going where and why. I will need to put more time into the map feature. I think the dips and peaks in the timeline will be very interesting to explore, especially seeing if they impacted charter flights as much as planned flights. I would expect to see a bump in charters are the pandemic, perhaps. 
+3.  What challenges do you foresee encountering with your data? These
+    can be data wrangling and / or visualization challenges.
 
-3. What challenges do you foresee encountering with your data? These can be data wrangling and / or visualization challenges.
-
-I am realizing there may be some trouble defining "flight metrics." What I have found so far is that it seems to be a fancy equation that includes fuel, open space on the plane, and how much freight was being carried. There are also a lot of airports in the world, so organizing those will be a challenge. 
-
+I am realizing there may be some trouble defining "flight metrics." What
+I have found so far is that it seems to be a fancy equation that
+includes fuel, open space on the plane, and how much freight was being
+carried. There are also a lot of airports in the world, so organizing
+those will be a challenge.

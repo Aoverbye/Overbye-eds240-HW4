@@ -4,7 +4,7 @@ author: "Amanda Overbye"
 date: 02/12/2025
 toc: true
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 editor: 
   markdown: 
     wrap: 72
@@ -201,7 +201,11 @@ freight_all <- freight_all %>% select(-distance_group)
 
 ### Sorting out the iatas
 
-I have been planning to use the airportr package to be able to get the coordinates for each airport for the map I want to make. I realized after looking at the freight data that there were world codes but no variable for the iata. After examining the data, I learned the iatas were just the 'origin' and 'dest' columns. 
+I have been planning to use the airportr package to be able to get the
+coordinates for each airport for the map I want to make. I realized
+after looking at the freight data that there were world codes but no
+variable for the iata. After examining the data, I learned the iatas
+were just the 'origin' and 'dest' columns.
 
 ```{r}
 # Rename origin and dest columns
@@ -210,7 +214,8 @@ freight_all <- freight_all %>%
   rename(iata_dest = dest)
 ```
 
-I will also need to create columns in the air_coords data that will have the same names as the columns in the freight_all dataframe
+I will also need to create columns in the air_coords data that will have
+the same names as the columns in the freight_all dataframe
 
 ```{r}
 # Duplicating iata coloumn
@@ -223,7 +228,12 @@ air_coords_rn <- air_coords %>%
 
 ### Adding coordinates to both the destination airports and the origin airports
 
-Up until now, most of my work on dataframes with coordinates only had one set of coordinates per row, but in this case I will need there to be two. To start this process, I need to take the air_coords data and duplicate the lat-longs so that there is one for the destination, and one for the origin. I am a bit concerned here because I do not know if it matters if the lat longs are not called latitude/longitude
+Up until now, most of my work on dataframes with coordinates only had
+one set of coordinates per row, but in this case I will need there to be
+two. To start this process, I need to take the air_coords data and
+duplicate the lat-longs so that there is one for the destination, and
+one for the origin. I am a bit concerned here because I do not know if
+it matters if the lat longs are not called latitude/longitude
 
 ```{r}
 # Duplicate and rename lat longs
@@ -242,7 +252,11 @@ air_duocoords <- air_coords_rn %>%
 
 ### Joining the data
 
-The first time I did this, it was with a full join which resulted in a lot of NAs, but then I used the left join and just joined the twice to ensure that the data had the coords matched for both dest and orign. To double check they were correct, I went through and manually checked a couple flights to see if they were correct and they were!
+The first time I did this, it was with a full join which resulted in a
+lot of NAs, but then I used the left join and just joined the twice to
+ensure that the data had the coords matched for both dest and orign. To
+double check they were correct, I went through and manually checked a
+couple flights to see if they were correct and they were!
 
 ```{r}
 # Join freight_all with air_duocoords to get destination coordinates
@@ -262,40 +276,35 @@ freight_coords <- freight_all %>%
 
 ### Getting data for the most common routes
 
-Before I can plot a map, I wanted to make sure I could limit the number of routes to the ones with the most trips. Otherwise the map would just be a bunch of lines with no helpful information
+Before I can plot a map, I wanted to make sure I could limit the number
+of routes to the ones with the most trips. Otherwise the map would just
+be a bunch of lines with no helpful information
 
 ```{r}
-# Count the most frequent airport-to-airport routes
-airport_routes <- freight_coords %>%
-  group_by(iata_origin, iata_dest) %>%
-  summarise(route_count = n()) %>%
-  arrange(desc(route_count))
+# airport_routes <- freight_coords %>%
+#   group_by(iata_origin, iata_dest) %>%
+#   mutate(route_count = n()) %>%  # Create a new column with the count of routes
+#   ungroup() %>%  # Remove grouping after adding the count
+#   distinct(iata_origin, iata_dest, .keep_all = TRUE) %>%  # Keep only unique routes
+#   arrange(desc(route_count))  
 ```
 
 ```{r}
-# Join airport details for the origin airport
-airport_routes <- airport_routes %>%
-  left_join(air_duocoords %>% 
-              select(iata_origin, name, city, lat_origin, long_origin),
-            by = "iata_origin") %>%
-  rename(origin_airport = name, 
-         origin_city = city)
-
-# Join airport details for the destination airport
-airport_routes <- airport_routes %>%
-  left_join(air_duocoords %>% 
-              select(iata_dest, name, city, lat_dest, long_dest),
-            by = "iata_dest") %>%
-  rename(dest_airport = name, 
-         dest_city = city)
+airport_routes <- freight_coords %>%
+  group_by(iata_origin, iata_dest) %>%
+  mutate(freight_shipped = sum(freight, na.rm = TRUE)) %>%  # Sum freight shipped for each route
+  ungroup() %>%  # Remove grouping after adding the freight count
+  distinct(iata_origin, iata_dest, .keep_all = TRUE) %>%  # Keep only unique routes
+  arrange(desc(freight_shipped)) 
 ```
 
 #### Get only the top 20 routes
 
 ```{r}
-top_10_routes <- airport_routes %>%
-  filter(route_count >= sort(route_count, decreasing = TRUE)[20]) %>%
-  arrange(desc(route_count)) 
+# Filtering for the top 20 routes
+top_20_routes <- airport_routes %>%
+  arrange(desc(freight_shipped)) %>%
+  head(20)
 ```
 
 ### Blank world map
@@ -313,24 +322,66 @@ map('world',
 
 ### Putting points on the map
 
-## THIS IS WHERE I AM BEGINING TO RETHINK THE ORGANIZATION BC I CANT DO THIS WITH ALL AIRPORTS
-
 ```{r}
 # Show the cities on the map
 map('world',
     col="#f2f2f2", fill=TRUE, bg="white", lwd=0.05,
     mar=rep(0,4),border=0, ylim=c(-80,80) 
 )
-points(x=freight_coords$long_dest, y=freight_coords$lat_dest, col="slateblue", cex=.5, pch=20)
+points(x=top_20_routes$long_dest, y=top_20_routes$lat_dest, col="slateblue", cex=1, pch=20)
+points(x = top_20_routes$long_origin, y = top_20_routes$lat_origin, col = "firebrick", cex = 0.7, pch = 20)
 ```
 
+### Making the map
 
+```{r}
+# Custom function to plot connections for your data
+plot_my_connection <- function(dep_lon, dep_lat, arr_lon, arr_lat, ...) {
+  
+  # Get intermediate points between origin and destination
+  inter <- gcIntermediate(c(dep_lon, dep_lat), c(arr_lon, arr_lat), n=50, addStartEnd=TRUE, breakAtDateLine=FALSE)
+  inter <- data.frame(inter)
+  
+  # Check if the route crosses the date line (180 degrees longitude)
+  diff_of_lon = abs(dep_lon) + abs(arr_lon)
+  
+  # Plot lines accordingly based on whether it crosses the date line or not
+  if(diff_of_lon > 180){
+    # Split the line into two parts and plot each separately
+    lines(subset(inter, lon >= 0), ...)
+    lines(subset(inter, lon < 0), ...)
+  } else {
+    # Plot the whole line as a single segment
+    lines(inter, ...)
+  }
+}
+```
 
+```{r}
+# Example: Plotting the map with top_20_routes data
+par(mar = c(0, 0, 0, 0))  # Set margin to zero
+map('world', col = "#f2f2f2", fill = TRUE, bg = "white", lwd = 0.05, mar = rep(0, 4), border = 0, ylim = c(-80, 80))
 
+# Plot lines connecting each pair of origin and destination
+for(i in 1:nrow(top_20_routes)) {
+  plot_my_connection(
+    dep_lon = top_20_routes$long_origin[i],
+    dep_lat = top_20_routes$lat_origin[i],
+    arr_lon = top_20_routes$long_dest[i],
+    arr_lat = top_20_routes$lat_dest[i],
+    col = "skyblue",  # Line color
+    lwd = 1  # Line width
+  )
+}
 
+# Add points for origin airports
+points(x = top_20_routes$long_origin, y = top_20_routes$lat_origin, col = "slateblue", cex = 1, pch = 20)
 
+# Add points for destination airports
+points(x = top_20_routes$long_dest, y = top_20_routes$lat_dest, col = "red", cex = 1, pch = 20)
+```
 
-
+# TEST
 
 # Plot big time line
 
