@@ -77,6 +77,7 @@ library(patchwork)
 library(lubridate)
 library(gridExtra)
 library(ggalluvial)
+library(geosphere)
 ```
 
 ```{r}
@@ -255,11 +256,47 @@ freight_coords <- freight_all %>%
             by = "iata_origin")
 ```
 
-
 # Begin Plot Process
 
 # Plot map graph
 
+### Getting data for the most common routes
+
+Before I can plot a map, I wanted to make sure I could limit the number of routes to the ones with the most trips. Otherwise the map would just be a bunch of lines with no helpful information
+
+```{r}
+# Count the most frequent airport-to-airport routes
+airport_routes <- freight_coords %>%
+  group_by(iata_origin, iata_dest) %>%
+  summarise(route_count = n()) %>%
+  arrange(desc(route_count))
+```
+
+```{r}
+# Join airport details for the origin airport
+airport_routes <- airport_routes %>%
+  left_join(air_duocoords %>% 
+              select(iata_origin, name, city, lat_origin, long_origin),
+            by = "iata_origin") %>%
+  rename(origin_airport = name, 
+         origin_city = city)
+
+# Join airport details for the destination airport
+airport_routes <- airport_routes %>%
+  left_join(air_duocoords %>% 
+              select(iata_dest, name, city, lat_dest, long_dest),
+            by = "iata_dest") %>%
+  rename(dest_airport = name, 
+         dest_city = city)
+```
+
+#### Get only the top 20 routes
+
+```{r}
+top_10_routes <- airport_routes %>%
+  filter(route_count >= sort(route_count, decreasing = TRUE)[20]) %>%
+  arrange(desc(route_count)) 
+```
 
 ### Blank world map
 
@@ -286,6 +323,13 @@ map('world',
 )
 points(x=freight_coords$long_dest, y=freight_coords$lat_dest, col="slateblue", cex=.5, pch=20)
 ```
+
+
+
+
+
+
+
 
 
 # Plot big time line
