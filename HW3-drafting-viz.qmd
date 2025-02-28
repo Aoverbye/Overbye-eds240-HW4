@@ -74,6 +74,9 @@ library(airportr)
 library(ggmap)
 library(maps)
 library(patchwork) 
+library(lubridate)
+library(gridExtra)
+library(ggalluvial)
 ```
 
 ```{r}
@@ -82,20 +85,44 @@ map_data_es <- map_data('world')[map_data('world')$region == "USA",]
 world <- worldMapEnv
 ```
 
+# Information
+
 #### Link to data
 
-https://data.transportation.gov/Aviation/International_Report_Freight/u4sg-r5vg/about_data
+https://www.transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=GDK&QO_fu146_anzr=Nv4%20Pn44vr45
+
+https://www.transtats.bts.gov/Tables.asp?QO_VQ=EED&QO_anzr=Nv4%FDPn44vr4%FDf6n6v56vp5%FD%FLS14z%FDHE%FDg4nssvp%FM-%FD%FDh.f.%FDPn44vr45&QO_fu146_anzr=Nv4%FDPn44vr45
 
 *More information*
 
 https://www.transtats.bts.gov/freight.asp
 
+*what variables mean*
+
+Freight = Non-Stop Segment Freight Transported (pounds)
+
+AircraftConfig: *Code Description 1 Passenger Configuration 2 Freight
+Configuration 3 Combined Passenger and Freight on a main deck 4
+Seaplane*
+
+### Definition of Freight
+
+"Freight is generally understood to be merchandise or commodities that
+are moved by a mode of transportation, such as a truck, ship, aircraft,
+pipeline, or train. Freight transportation is the physical process of
+transporting commodities or merchandise from one place to another for a
+fee."
+[source](https://www.fhwa.dot.gov/policy/23cpr/chap11.cfm#:~:text=Freight%20transportation%20is%20the%20physical,to%20another%20for%20a%20fee.)
+
 ```{r}
 # Load in the data
 freight2024 <- read.csv(here("data", "flights2024.csv")) %>% 
-  filter(FREIGHT != 0)
+  filter(FREIGHT != 0) %>% 
+  filter(AIRCRAFT_CONFIG == 2) %>% 
+  clean_names()
 
-air_coords <- airports
+air_coords <- airports %>% 
+  clean_names()
 ```
 
 ```{r}
@@ -113,24 +140,6 @@ read <- function(year) {
 }
 ```
 
-
-```{r}
-# Function for reading in CSVs
-test <- function(year) {
-  file_name <- paste0("flights", year, ".csv") 
-  file_path <- here("data", file_name) 
-  
-  # Read and filter dataset
-  df <- read.csv(file_path) %>%
-    filter(FREIGHT != 0) %>%
-    
-    clean_names() %>% 
-    
-  return(df)
-}
-```
-
-
 ```{r}
 freight2023 <- read(2023)
 ```
@@ -146,14 +155,230 @@ freight2017 <- read(2017)
 freight2016 <- read(2016)
 freight2015 <- read(2015)
 freight2014 <- read(2014)
+freight2013 <- read(2013)
+freight2012 <- read(2012)
+freight2011 <- read(2011)
+freight2010 <- read(2010)
+freight2009 <- read(2009)
+freight2008 <- read(2008)
+freight2007 <- read(2007)
+freight2006 <- read(2006)
+freight2005 <- read(2005)
+freight2004 <- read(2004)
 ```
 
-clean_counties <- clean_counties %>% 
-  filter(!state %in% c("American Samoa"
+# Join data
+
+```{r}
+freighttest <- full_join(freight2014, freight2015)
+```
+
+```{r}
+# Create function to join datasets
+join_freight_data <- function(...) {
+  Reduce(full_join, list(...))
+}
+
+# Use the function to join all datasets
+freight_all <- join_freight_data(
+  freight2004, freight2005, freight2006, freight2007, 
+  freight2008, freight2009, freight2010, freight2011, 
+  freight2012, freight2013, freight2014, freight2015, 
+  freight2016, freight2017, freight2018, freight2019, 
+  freight2020, freight2021, freight2022, freight2023, 
+  freight2024
+)
+```
+
+```{r}
+freight_all <- freight_all %>% select(-distance_group)
+```
+
+# Data editing for the map
+
+## Create DF with Freight_all and airport coordinates
+
+### Sorting out the iatas
+
+I have been planning to use the airportr package to be able to get the coordinates for each airport for the map I want to make. I realized after looking at the freight data that there were world codes but no variable for the iata. After examining the data, I learned the iatas were just the 'origin' and 'dest' columns. 
+
+```{r}
+# Rename origin and dest columns
+freight_all <- freight_all %>% 
+  rename(iata_origin = origin) %>% 
+  rename(iata_dest = dest)
+```
+
+I will also need to create columns in the air_coords data that will have the same names as the columns in the freight_all dataframe
+
+```{r}
+# Duplicating iata coloumn
+air_coords$iata_origin = air_coords$iata
+
+# Renaming original iata column
+air_coords_rn <- air_coords %>% 
+  rename(iata_dest = iata)
+```
+
+### Adding coordinates to both the destination airports and the origin airports
+
+Up until now, most of my work on dataframes with coordinates only had one set of coordinates per row, but in this case I will need there to be two. To start this process, I need to take the air_coords data and duplicate the lat-longs so that there is one for the destination, and one for the origin. I am a bit concerned here because I do not know if it matters if the lat longs are not called latitude/longitude
+
+```{r}
+# Duplicate and rename lat longs
+air_coords_rn$lat_dest = air_coords_rn$latitude
+air_coords_rn$long_dest = air_coords_rn$longitude
+```
+
+Then I will rename the original lat longs
+
+```{r}
+# Rename original lat longs
+air_duocoords <- air_coords_rn %>% 
+  rename(lat_origin = latitude) %>% 
+  rename(long_origin = longitude)
+```
+
+### Joining the data
+
+The first time I did this, it was with a full join which resulted in a lot of NAs, but then I used the left join and just joined the twice to ensure that the data had the coords matched for both dest and orign. To double check they were correct, I went through and manually checked a couple flights to see if they were correct and they were!
+
+```{r}
+# Join freight_all with air_duocoords to get destination coordinates
+freight_coords <- freight_all %>%
+  left_join(air_duocoords %>%
+              select(iata_dest, lat_dest, long_dest), 
+            by = "iata_dest") %>%
+  # Join again to get origin coordinates
+  left_join(air_duocoords %>%
+              select(iata_origin, lat_origin, long_origin), 
+            by = "iata_origin")
+```
+
+
+# Begin Plot Process
+
+# Plot map graph
+
+
+### Blank world map
+
+```{r}
+# Blank world map
+par(mar=c(0,0,0,0))
+
+# World map
+map('world',
+    col="#f2f2f2", fill=TRUE, bg="white", lwd=0.05,
+    mar=rep(0,4),border=0, ylim=c(-80,80) 
+)
+```
+
+### Putting points on the map
+
+## THIS IS WHERE I AM BEGINING TO RETHINK THE ORGANIZATION BC I CANT DO THIS WITH ALL AIRPORTS
+
+```{r}
+# Show the cities on the map
+map('world',
+    col="#f2f2f2", fill=TRUE, bg="white", lwd=0.05,
+    mar=rep(0,4),border=0, ylim=c(-80,80) 
+)
+points(x=freight_coords$long_dest, y=freight_coords$lat_dest, col="slateblue", cex=.5, pch=20)
+```
+
+
+# Plot big time line
+
+This plot will include information about all flights carrying freight to
+and from the US between 2004-2024
+
+#### Data proccessing for big timeline
+
+```{r}
+# Convert year and month into a proper date format
+freight_all <- freight_all %>%
+  mutate(date = make_date(year, month, 1))
+```
+
+```{r}
+# Filter data for the years 2014 to 2024
+#freight_filtered <- freight_all %>%
+  #filter(year >= 2014 & year <= 2024)
+```
+
+```{r}
+# Aggregate freight by month
+freight_month <- freight_all %>%
+  group_by(year, month) %>%
+  summarise(total_freight = sum(freight, na.rm = TRUE), .groups = "drop") %>%
+  mutate(date = make_date(year, month, 1)) 
+```
+
+### Ploting big timeline
+
+```{r}
+# Plot monthly freight data over time
+timeline <- 
+  ggplot(freight_month, aes(x = date, y = total_freight)) +
+  geom_smooth(color = "slateblue4", size = 1, span = 0.1, se = FALSE) +
+  scale_x_date(date_labels = "%Y", date_breaks = "24 months") +  # Display month and year on x-axis
+  scale_y_continuous(labels = scales::comma) +
+  labs(title = "Pounds of Freight Moved To and From The USA Via Airplane",
+       x = "Month",
+       y = "Total Freight (Pounds)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.grid.major.y = element_blank(),  # Remove horizontal grid lines
+        panel.grid.minor.y = element_blank(),  # Remove minor horizontal grid lines
+        panel.grid.major.x = element_line(color = "lightgray", linewidth = 0.5)) +
+    annotate("text", 
+           x = as.Date("2022-03-01"),  # Date of annotation
+           y = max(freight_month$total_freight),  # Place annotation at the top of the plot
+           label = "Great Freight Recession", 
+           color = "firebrick", 
+           size = 3, 
+           angle = 0, 
+           hjust = 1.1, 
+           vjust = 0) +
+  geom_vline(xintercept = as.Date("2022-03-01"), color = "firebrick", linetype = "dashed", size = 1)
+
+```
+
+# Plot average year flucuations
+
+# Organize data
+
+```{r}
+# Aggregate freight by month across all years
+freight_avg_month <- freight_all %>%
+  group_by(month) %>%
+  summarise(avg_freight = mean(freight, na.rm = TRUE), .groups = "drop")
+```
+
+### Plot
+
+```{r}
+# Create a line plot showing the average monthly freight
+avg_year_timeline <- ggplot(freight_avg_month, aes(x = month, y = avg_freight)) +
+  geom_line(color = "slateblue", size = 1) +
+  #geom_point(color = "firebrick", size = 2) +  # Highlight points for each month
+  scale_x_continuous(breaks = 1:12, labels = month.abb) +  # Format x-axis with month names
+  labs(title = "How Freight Fluxates In an Average Year",
+       x = "Month",
+       y = "Average Freight (lbs)") +
+  theme_minimal() +
+  theme(panel.grid.major.y = element_blank(),  # Remove horizontal grid lines
+        panel.grid.minor.y = element_blank(),  # Remove minor horizontal grid lines
+        panel.grid.major.x = element_line(color = "lightgray", linewidth = 0.5))  # Vertical grid lines
+
+```
+
+## little timelines
 
 ```{r}
 # top  10 questions
-top_10 <- freight2023 %>%
+top_10 <- freight2024 %>%
   filter(!origin_country_name %in% "United States") %>% 
   count(origin_country_name, sort = TRUE) %>% 
   slice_max(n, n = 10) %>% 
@@ -167,7 +392,7 @@ country_plot <- ggplot(top_10, aes(x = fct_reorder(origin_country_name,desc(n)),
                    y = n, 
                    fill = origin_country_name)) +
   geom_col() +
-  theme_void() +
+  theme_void()  +
   theme(legend.position = "none")
 ```
 
@@ -176,14 +401,14 @@ country_plot <- ggplot(top_10, aes(x = fct_reorder(origin_country_name,desc(n)),
 ```{r}
 # TEST
 # Step 1: Find the top 5 countries with the highest yearly flight count
-top_5_countries <- freight2023 %>%
+top_5_countries <- freight2024 %>%
   filter(!origin_country_name %in% "United States") %>% 
   count(origin_country_name, sort = TRUE) %>%  # Count total flights per country
   slice_max(n, n = 5) %>%  # Select top 5 countries
   pull(origin_country_name)  # Extract country names as a vector
 
 # Step 2: Get monthly flight counts for only the top 5 countries
-top_5_monthly <- freight2023 %>%
+top_5_monthly <- freight2024 %>%
   filter(origin_country_name %in% top_5_countries) %>%  # Keep only top 5 countries
   count(origin_country_name, month) %>%  # Count flights per month
   arrange(origin_country_name, month) %>%   # Sort results
@@ -198,13 +423,86 @@ timeline <- ggplot(top_5_monthly, aes(month)) +
   geom_line(aes(y = Mexico, colour = "Mexico")) +
   geom_line(aes(y = Japan, colour = "Japan")) +
   geom_line(aes(y = Canada, colour = "Canada")) +
-  geom_line(aes(y = Germany, colour = "Germany"))+
-  labs(title = "Tons of Domestic Freigh Flight Metrics compared to international",
-    subtitle = "air freight metric traveling between international points and U.S. airports.") +
+  geom_line(aes(y = `Hong Kong`, colour = "Germany"))+
+  labs(title = "Tons of Domestic Freigh Flight Metrics compared to international") +
+    #subtitle = "air freight metric traveling between international points and U.S. airports.") 
     theme_void()
 ```
 
+# Saike Chart
 
+### Editing data for chart
+
+```{r}
+# Find the top 5 cities with the most departures
+top_cities <- freight_all %>%
+  group_by(origin_city_name) %>%
+  summarise(total_flights = n()) %>%
+  arrange(desc(total_flights)) %>%
+  slice(1:5)  # Select top 5 cities
+
+# Filter the dataset to only include flights from these top cities
+freight_top <- freight_all %>%
+  filter(origin_city_name %in% top_cities$origin_city_name) %>%
+  group_by(origin_city_name, dest_city_name) %>%
+  summarise(total_flights = n(), .groups = "drop")
+```
+
+### Data stuff attempt 2
+
+```{r}
+# Find the top 5 origin countries with the most flights
+top_origin_countries <- freight_all %>%
+  group_by(origin_country_name) %>%
+  summarise(total_flights = n()) %>%
+  arrange(desc(total_flights)) %>%
+  slice(1:5)  # Select top 5 origin countries
+
+# Find the top 5 destination countries with the most flights
+top_dest_countries <- freight_all %>%
+  group_by(dest_country_name) %>%
+  summarise(total_flights = n()) %>%
+  arrange(desc(total_flights)) %>%
+  slice(1:5)  # Select top 5 destination countries
+
+# Filter the dataset to include flights between the top origin and top destination countries
+freight_top <- freight_all %>%
+  filter(origin_country_name %in% top_origin_countries$origin_country_name &
+         dest_country_name %in% top_dest_countries$dest_country_name) %>%
+  group_by(origin_country_name, dest_country_name) %>%
+  summarise(total_flights = n(), .groups = "drop")
+
+
+```
+
+### Create Plot
+
+```{r}
+ggplot(freight_top,
+       aes(axis1 = origin_country_name, axis2 = dest_country_name, y = total_flights)) +
+  geom_alluvium(aes(fill = dest_country_name), width = 0.3, alpha = 0.7) +
+  geom_stratum(width = 0.5, fill = "grey") +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum)), size = 3) +
+  labs(title = "Flights Between Top 5 Origin and Destination Countries",
+       x = "Flight Path",
+       y = "Number of Flights") +
+  theme_minimal()
+
+```
+
+# Create it again
+
+```{r}
+ggplot(freight_top,
+       aes(axis1 = origin_country_name, axis2 = dest_country_name, y = total_flights)) +
+  geom_alluvium(aes(fill = dest_country_name), width = 0.3, alpha = 0.7) +
+  geom_stratum(width = 0.5, fill = "grey") +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum)), size = 3) +
+  labs(title = "Flights from the United States to Top 5 Destination Countries",
+       x = "Flight Path",
+       y = "Number of Flights") +
+  theme_minimal()
+```
 
 # Hand-drawn anticipated visualizations
 
@@ -217,6 +515,7 @@ you are pursuing option 3*
 # Mock up of hand drawn visualizations using code
 
 ## Create base plot
+
 ```{r}
 plot_base <- ggplot() +
   
@@ -270,17 +569,38 @@ plot_base <- ggplot() +
 plot_base
 ```
 
+```{r}
+plot_base2 <- ggplot() +
+  
+  # Add labels, subtitles, and caption to plot
+  labs(
+    title = "Airplanes & Freight",
+    subtitle = "Airplanes carry a lot of freight different places",
+    caption = "they can flY!"
+    ) +
+  
+  # apply a completely empty theme ----
+  theme_void()
+```
+
 # Add elements together!
 
 ```{r}
-plot_final <- plot_base +
+plot_final2 <- plot_base2 +
   
   # Lay out the order plots will be placed on the graph and set their coordinates
-  inset_element(country_plot, left = 0, right = .5, top = .5, bottom = 0)+
-  inset_element(timeline, left = 0, right = .5, top = 1, bottom = .5)
+  inset_element(timeline, left = 0.1, right = 0.9, top = 0.5, bottom = 0) +
+  inset_element(avg_year_timeline, left = 0.1, right = 0.9, top = 1, bottom = 0.5)
 ```
 
 ```{r}
-plot_final
+plot_final2
 ```
 
+# Figuring out how to put plots together
+
+http://127.0.0.1:44185/graphics/ae1718f3-c166-44f9-ba9b-2d458e18c3e2.png
+
+```{r}
+grid.arrange(timeline, avg_year_timeline, ncol = 1)
+```
