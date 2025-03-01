@@ -4,7 +4,7 @@ author: "Amanda Overbye"
 date: 02/12/2025
 toc: true
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 editor: 
   markdown: 
     wrap: 72
@@ -382,6 +382,53 @@ points(x = top_20_routes$long_dest, y = top_20_routes$lat_dest, col = "red", cex
 ```
 
 # TEST
+```{r}
+# Function to create the route map
+plot_routes_ggplot <- function(routes_data) {
+  
+  # Get world map data
+  world_map <- map_data("world")
+  
+  # Create ggplot object
+  map_pounds <- ggplot() +
+    # Add world map background
+    geom_polygon(data = world_map, aes(x = long, y = lat, group = group),
+                 fill = "#f2f2f2", color = "white") +
+    
+    # Add curved lines for routes
+    geom_curve(data = routes_data, 
+               aes(x = long_origin, y = lat_origin, 
+                   xend = long_dest, yend = lat_dest),
+               curvature = 0.2, color = "skyblue", size = 0.5) +
+    
+    # Add points for origin airports
+    geom_point(data = routes_data, aes(x = long_origin, y = lat_origin), 
+               color = "slateblue", size = 2) +
+    
+    # Add points for destination airports
+    geom_point(data = routes_data, aes(x = long_dest, y = lat_dest), 
+               color = "red", size = 2) +
+    
+    # Theme settings
+    theme_minimal() +
+    theme(axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          panel.grid = element_blank()) +
+    labs(title = "Top Air Freight Routes", x = "", y = "")
+  
+  return(map_pounds)
+}
+
+# Store the plot in a variable
+route_map <- plot_routes_ggplot(top_20_routes)
+
+# Display the plot
+print(route_map)
+```
+
+
+
+# TEST
 
 # Plot big time line
 
@@ -394,12 +441,6 @@ and from the US between 2004-2024
 # Convert year and month into a proper date format
 freight_all <- freight_all %>%
   mutate(date = make_date(year, month, 1))
-```
-
-```{r}
-# Filter data for the years 2014 to 2024
-#freight_filtered <- freight_all %>%
-  #filter(year >= 2014 & year <= 2024)
 ```
 
 ```{r}
@@ -494,34 +535,23 @@ country_plot <- ggplot(top_10, aes(x = fct_reorder(origin_country_name,desc(n)),
 ### Plot timeline
 
 ```{r}
-# TEST
-# Step 1: Find the top 5 countries with the highest yearly flight count
-top_5_countries <- freight2024 %>%
-  filter(!origin_country_name %in% "United States") %>% 
-  count(origin_country_name, sort = TRUE) %>%  # Count total flights per country
-  slice_max(n, n = 5) %>%  # Select top 5 countries
-  pull(origin_country_name)  # Extract country names as a vector
+top_5_countries <- freight_all %>%
+  filter(!origin_country_name %in% "United States") %>%  
+  count(origin_country_name, sort = TRUE) %>%  
+  slice_max(n, n = 5)  
 
-# Step 2: Get monthly flight counts for only the top 5 countries
-top_5_monthly <- freight2024 %>%
-  filter(origin_country_name %in% top_5_countries) %>%  # Keep only top 5 countries
-  count(origin_country_name, month) %>%  # Count flights per month
-  arrange(origin_country_name, month) %>%   # Sort results
-pivot_wider(names_from = origin_country_name, values_from = n, values_fill = 0) %>%  
-  arrange(month)
-```
+country_bar <- ggplot(top_5_countries, aes(x = reorder(origin_country_name, n), y = n, fill = origin_country_name)) +
+  geom_col(show.legend = FALSE) +  
+  coord_flip() +  
+  labs(
+    title = "Top 5 Countries with the Most Freight Flights",
+    x = "Country",
+    y = "Total Flights"
+  ) +
+  theme_minimal()
 
-The plotting
+print(country_bar)
 
-```{r}
-timeline <- ggplot(top_5_monthly, aes(month)) + 
-  geom_line(aes(y = Mexico, colour = "Mexico")) +
-  geom_line(aes(y = Japan, colour = "Japan")) +
-  geom_line(aes(y = Canada, colour = "Canada")) +
-  geom_line(aes(y = `Hong Kong`, colour = "Germany"))+
-  labs(title = "Tons of Domestic Freigh Flight Metrics compared to international") +
-    #subtitle = "air freight metric traveling between international points and U.S. airports.") 
-    theme_void()
 ```
 
 # Saike Chart
@@ -683,9 +713,13 @@ plot_base2 <- ggplot() +
 ```{r}
 plot_final2 <- plot_base2 +
   
-  # Lay out the order plots will be placed on the graph and set their coordinates
-  inset_element(timeline, left = 0.1, right = 0.9, top = 0.5, bottom = 0) +
-  inset_element(avg_year_timeline, left = 0.1, right = 0.9, top = 1, bottom = 0.5)
+  # Place the bar chart on top, spanning the full width
+  inset_element(country_bar, left = 0.05, right = 0.95, top = 0.95, bottom = 0.55) +
+  
+  # Stack the two timelines below with equal spacing
+  inset_element(avg_year_timeline, left = 0.05, right = 0.95, top = 0.5, bottom = 0.3) +
+  inset_element(timeline, left = 0.05, right = 0.95, top = 0.3, bottom = 0.05) 
+
 ```
 
 ```{r}
