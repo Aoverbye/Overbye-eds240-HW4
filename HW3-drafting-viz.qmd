@@ -15,7 +15,7 @@ format:
   html:
     embed-resources: true
     toc: true
-    code-fold: true
+    code-fold: false
 ---
 
 ```{r setup, include=FALSE}
@@ -26,23 +26,48 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, code_foldin
 
 **1. Which option do you plan to pursue?**
 
+I still plan on doing the infographic
+
 **2. Restate your question(s). Has this changed at all since HW #1? If
 yes, how so?**
 
+My question is still where is freight coming from and going and when is
+that happening. As I have been learning about this, I have realized
+there has been a freight recession that is ending now, while I think I
+will still keep my question general, I could see myself taking some of
+my data and specifying it more towards that.
+
 **3. Explain which variables from your data set(s) you will use to
 answer your question(s), and how.**
+
+The main variable is the freight variable from the freight_all data set,
+this is how many freight in pounds is sent with each trip. Additionally,
+I am using destination and origin information for my graphs.
 
 **4. Find at least two data visualizations that you could (potentially)
 borrow / adapt pieces from. Link to them or download and embed them into
 your .qmd file, and explain which elements you might borrow (e.g. the
 graphic form, legend design, layout, etc.)**
 
+[inspo1](https://raw.githubusercontent.com/BlakeRMills/TidyTuesday/main/2022/Alternative%20Fuel%20(1%20March%202022)/AlternativeFuel.png)
+
+I liked this graph because it shows a readable map.
+
+[inspo2](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F2c38b44c-b525-4f45-9888-5efb4ff64ba0_2550x1694.png)
+
+I like this one because it shows how to incorperate line charts and a
+bart chart into a graph, as that is what I am now planning on doing.
+
 **5. Hand-draw your anticipated visualizations, then take a photo of
 your drawing(s) and embed it in your rendered .qmd file – note that
 these are not exploratory visualizations, but rather your plan for your
 final visualizations that you will eventually polish and submit with**
 
+![Airplanes!](mockup.png)
+
 **6 Mock up all of your hand drawn visualizations using code.**
+
+See below
 
 **7. Answer the following questions:**
 
@@ -50,11 +75,36 @@ a.  *What challenges did you encounter or anticipate encountering as you
     continue to build / iterate on your visualizations in R? If you
     struggled with mocking up any of your three visualizations (from #6,
     above), describe those challenges here.*
-b.  *What ggplot extension tools / packages do you need to use to build
+
+There I am trying to figure out a way to make it all work together in
+one graph, then add things like typefaces and figure out text size, this
+is something I have yet to accomplish. Also, choosing what variables and
+making a map of the airports and how they connect. I originally choose
+the routes that were traveled the most, but then realized that I was
+using pounds in the timeline to connect it all, so I should probably use
+pounds elsewhere as well.
+
+a.  *What ggplot extension tools / packages do you need to use to build
     your visualizations? Are there any that we haven’t covered in class
     that you’ll be learning how to use for your visualizations?*
-c.  *What feedback do you need from the instructional team and / or your
+    -   Airportr and geosphere are the two off the top of my head. We
+        have used so many different packages in different classes, it is
+        hard to remember. There is also a failed Saike chart down there,
+        and I think there are some packages I used for that, but it was
+        very frustrating, so I don't really remember the packages, just
+        the frustration.
+b.  *What feedback do you need from the instructional team and / or your
     peers to ensure that your intended message is clear?*
+
+Please ignore the typos, I know there are a lot. I think just knowing
+what I should put where and the size of things. I know this document is
+much messier than the previous one. I am a little scared to organize it
+incase I throw something off with the data processing. I think
+aesthetics, as far as size goes. I have not messed around with the
+smaller aesthetics as much as I would have liked to. I really want to
+know what questions y'all have about this subject and what parts of it
+do you think are the most interesting the pull out? What questions do
+these plots bring to mind?
 
 ## Load necessary packages and read in your data.
 
@@ -381,7 +431,6 @@ points(x = top_20_routes$long_origin, y = top_20_routes$lat_origin, col = "slate
 points(x = top_20_routes$long_dest, y = top_20_routes$lat_dest, col = "red", cex = 1, pch = 20)
 ```
 
-# TEST
 ```{r}
 # Function to create the route map
 plot_routes_ggplot <- function(routes_data) {
@@ -425,10 +474,6 @@ route_map <- plot_routes_ggplot(top_20_routes)
 # Display the plot
 print(route_map)
 ```
-
-
-
-# TEST
 
 # Plot big time line
 
@@ -479,6 +524,8 @@ timeline <-
            vjust = 0) +
   geom_vline(xintercept = as.Date("2022-03-01"), color = "firebrick", linetype = "dashed", size = 1)
 
+print(timeline)
+
 ```
 
 # Plot average year flucuations
@@ -508,9 +555,10 @@ avg_year_timeline <- ggplot(freight_avg_month, aes(x = month, y = avg_freight)) 
         panel.grid.minor.y = element_blank(),  # Remove minor horizontal grid lines
         panel.grid.major.x = element_line(color = "lightgray", linewidth = 0.5))  # Vertical grid lines
 
+print(avg_year_timeline)
 ```
 
-## little timelines
+## Just bars
 
 ```{r}
 # top  10 questions
@@ -530,6 +578,10 @@ country_plot <- ggplot(top_10, aes(x = fct_reorder(origin_country_name,desc(n)),
   geom_col() +
   theme_void()  +
   theme(legend.position = "none")
+```
+
+```{r}
+print(country_plot)
 ```
 
 ### Plot timeline
@@ -558,13 +610,15 @@ print(country_bar)
 
 ### Editing data for chart
 
+I like to think of it as bar prison and saike hell
+
 ```{r}
 # Find the top 5 cities with the most departures
 top_cities <- freight_all %>%
   group_by(origin_city_name) %>%
   summarise(total_flights = n()) %>%
   arrange(desc(total_flights)) %>%
-  slice(1:5)  # Select top 5 cities
+  slice(1:5)
 
 # Filter the dataset to only include flights from these top cities
 freight_top <- freight_all %>%
@@ -629,17 +683,15 @@ ggplot(freight_top,
   theme_minimal()
 ```
 
-# Hand-drawn anticipated visualizations
-
-*a sketch of your infographic (which should include at least three
-component visualizations) if you are pursuing option 1 a sketch of all
-three separate visualizations if you are pursuing option 2 a sketch of
-the approved number of visualizations, as outlined in your proposal, if
-you are pursuing option 3*
-
 # Mock up of hand drawn visualizations using code
 
+#### Goal:
+
+![Airplanes!](mockup.png)
+
 ## Create base plot
+
+I didnt actually use this one :(
 
 ```{r}
 plot_base <- ggplot() +
@@ -711,14 +763,13 @@ plot_base2 <- ggplot() +
 # Add elements together!
 
 ```{r}
+# Add them all together
 plot_final2 <- plot_base2 +
   
-  # Place the bar chart on top, spanning the full width
-  inset_element(country_bar, left = 0.05, right = 0.95, top = 0.95, bottom = 0.55) +
-  
-  # Stack the two timelines below with equal spacing
-  inset_element(avg_year_timeline, left = 0.05, right = 0.95, top = 0.5, bottom = 0.3) +
-  inset_element(timeline, left = 0.05, right = 0.95, top = 0.3, bottom = 0.05) 
+  inset_element(route_map, left = 0.1, right = 0.9, top = 1, bottom = 0.55) +
+  inset_element(avg_year_timeline, left = 0.1, right = 0.45, top = 0.5, bottom = 0.28) +
+  inset_element(timeline, left = 0.1, right = 0.45, top = 0.28, bottom = 0.05) +
+  inset_element(country_bar, left = 0.5, right = 0.9, top = 0.5, bottom = 0.05)
 
 ```
 
@@ -726,7 +777,25 @@ plot_final2 <- plot_base2 +
 plot_final2
 ```
 
-# Figuring out how to put plots together
+```{r}
+route_map
+```
+
+```{r}
+plot_final3 <- plot_base2 +
+  
+  # Map takes the top half
+  inset_element(route_map, left = 0.05, right = 0.95, top = 1, bottom = 0.5) +
+  
+  # Timeline plots side by side on the bottom
+  inset_element(avg_year_timeline, left = 0.05, right = 0.48, top = 0.5, bottom = 0) +
+  inset_element(timeline, left = 0.52, right = 0.95, top = 0.5, bottom = 0)
+
+
+print(plot_final3)
+```
+
+# Using merge to look at timelines together
 
 http://127.0.0.1:44185/graphics/ae1718f3-c166-44f9-ba9b-2d458e18c3e2.png
 
