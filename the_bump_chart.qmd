@@ -1,0 +1,215 @@
+---
+title: "The Bump Chart"
+author: "Amanda Overbye"
+date: 02/12/2025
+toc: true
+editor_options: 
+  chunk_output_type: console
+editor: 
+  markdown: 
+    wrap: 72
+execute: 
+  eval: true
+  warning: false
+format:
+  html:
+    embed-resources: true
+    toc: true
+    code-fold: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, code_folding = FALSE)
+```
+
+# Load Libraries and Data
+
+```{r}
+# Load packages
+library(tidycensus)
+library(tidyverse)
+library(ggplot2)
+library(tmap)
+library(here)
+library(janitor)
+library(usdata)
+library(tigris)
+library(sf)
+library(scales)
+library(airportr)
+library(ggmap)
+library(maps)
+library(patchwork) 
+library(lubridate)
+library(gridExtra)
+library(ggalluvial)
+library(geosphere)
+library(waffle)
+library(showtext)
+library(ggbump)
+```
+
+### Function for reading in data
+
+```{r}
+# Function for reading in CSVs
+read <- function(year) {
+  file_name <- paste0("flights", year, ".csv") 
+  file_path <- here("data", file_name) 
+  
+  # Read and filter dataset
+  df <- read.csv(file_path) %>%
+    filter(FREIGHT != 0) %>% 
+    clean_names()
+  
+  return(df)
+}
+```
+
+### Reading in the data via the function
+
+```{r}
+# Read in data via function
+
+freight2024 <- read(2024)
+freight2023 <- read(2023)
+freight2022 <- read(2022)
+freight2021 <- read(2021)
+freight2020 <- read(2020)
+freight2019 <- read(2019)
+freight2018 <- read(2018)
+freight2017 <- read(2017)
+freight2016 <- read(2016)
+freight2015 <- read(2015)
+freight2014 <- read(2014)
+freight2013 <- read(2013)
+freight2012 <- read(2012)
+freight2011 <- read(2011)
+freight2010 <- read(2010)
+freight2009 <- read(2009)
+freight2008 <- read(2008)
+freight2007 <- read(2007)
+freight2006 <- read(2006)
+freight2005 <- read(2005)
+freight2004 <- read(2004)
+```
+
+### Function to join dfs
+
+```{r}
+# Create function to join datasets
+join_freight_data <- function(...) {
+  Reduce(full_join, list(...))
+}
+```
+
+### Joining the dfs via function
+
+```{r}
+# Use the function to join all datasets
+freight_all <- join_freight_data(
+  freight2004, freight2005, freight2006, freight2007, 
+  freight2008, freight2009, freight2010, freight2011, 
+  freight2012, freight2013, freight2014, freight2015, 
+  freight2016, freight2017, freight2018, freight2019, 
+  freight2020, freight2021, freight2022, freight2023, 
+  freight2024
+)
+```
+
+# Data Wrangling for Bump Chart
+
+# COPY
+
+```{r}
+#...................rank occupations by salary...................
+country_rank_by_year <- freight_all |> 
+  select(year, occupation, total_earnings) |> 
+  group_by(year) |> 
+  mutate(
+    rank = row_number(desc(total_earnings))
+  ) |> 
+  ungroup() |> 
+  arrange(rank, year)
+
+#........get top 8 occupation names for final year (2016)........
+top2016 <- salary_rank_by_year |>  
+  filter(year == 2016, rank <= 8) |>  
+  pull(occupation) 
+
+```
+
+# COPY
+
+**Note to self to help thinking** 
+Because all of this data has to do with the USA, each row will have the US in either dest or origin. So, to get the countries with the most amount of freight, it will be useful to make a column with the country involved in each row that is not the united states. 
+
+```{r}
+# Get the amount of freight based on the non us country 
+other_countries_col <- freight_all %>% 
+  mutate(other_country = ifelse(origin_country_name == "United States", dest_country_name, origin_country_name)) %>% 
+  group_by(other_country, year) %>%
+  summarize(total_freight = sum(freight, na.rm = TRUE))
+```
+
+Filtered it to after 2019, so lines didnt go outside of chart
+
+```{r}
+# Rank the number one countries by year
+country_rank_by_year <- other_countries_col %>%
+  filter(year >= 2019) %>% 
+  select(year, other_country, total_freight) %>% 
+  group_by(year) %>% 
+  mutate(
+    rank = row_number(desc(total_freight))
+  ) %>% 
+  ungroup() %>% 
+  arrange(rank, year)
+```
+
+### Filter to get years of interest
+
+```{r}
+# Filter for 2024
+top_countries_2024 <- country_rank_by_year %>% 
+  filter(year == 2024, rank <= 10) %>% 
+  pull(other_country)
+
+# Filter for 2019
+#top_countries_2019 <- country_rank_by_year %>% 
+  #filter(year == 2019, rank <= 10)
+```
+
+# Create bump chart
+
+
+```{r}
+country_rank_by_year %>%
+  filter(other_country %in% top_countries_2024) %>%
+  ggplot(aes(x = year, y = rank, color = other_country)) + 
+  geom_point(shape = "|", size = 6) + 
+  geom_bump(linewidth = 1) +
+  geom_text(
+    data = country_rank_by_year |> filter(year == 2019, other_country %in% top_countries_2024),
+    aes(label = other_country)
+  ) +
+   geom_text(
+    data = country_rank_by_year |> filter(year == 2024, other_country %in% top_countries_2024),
+    aes(label = rank)
+  )  +
+    scale_y_reverse() +
+  coord_cartesian(xlim = c(2019, 2024), #make the plot smaller 
+                  ylim = c(11, 0.25), 
+                  clip = "off")
+  
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 10),
+    axis.title = element_text(size = 12),
+    legend.position = "none"  # Remove legend if it's not necessary
+  )
+
+```
+
+
+

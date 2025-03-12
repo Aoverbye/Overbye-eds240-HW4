@@ -106,6 +106,10 @@ know what questions y'all have about this subject and what parts of it
 do you think are the most interesting the pull out? What questions do
 these plots bring to mind?
 
+## Colors
+
+Map Background blue: #5b8d9cff Map land color: #efa86dff
+
 ## Load necessary packages and read in your data.
 
 ```{r}
@@ -357,7 +361,16 @@ top_20_routes <- airport_routes %>%
   head(20)
 ```
 
+```{r}
+top_10_routes <- airport_routes %>%
+  arrange(desc(freight_shipped)) %>%
+  head(10)
+```
+
 ### Blank world map
+
+Background color: #5b8d9cff, #69a2b1 countries: #d7cb8eff #efa86dff
+#f3ce73 boarder: #568795
 
 ```{r}
 # Blank world map
@@ -365,9 +378,15 @@ par(mar=c(0,0,0,0))
 
 # World map
 map('world',
-    col="#f2f2f2", fill=TRUE, bg="white", lwd=0.05,
+    col="#d0e4f2", fill=TRUE, bg="white", lwd=0.05,
     mar=rep(0,4),border=0, ylim=c(-80,80) 
 )
+```
+
+```{r}
+map('world', col="#FBDF96", fill=TRUE, bg="#CEE5F2", lwd=0.05,
+    mar=rep(0,4), border="gray60", ylim=c(-80,80))
+
 ```
 
 ### Putting points on the map
@@ -407,28 +426,11 @@ plot_my_connection <- function(dep_lon, dep_lat, arr_lon, arr_lat, ...) {
 }
 ```
 
-```{r}
-# Example: Plotting the map with top_20_routes data
-par(mar = c(0, 0, 0, 0))  # Set margin to zero
-map('world', col = "#f2f2f2", fill = TRUE, bg = "white", lwd = 0.05, mar = rep(0, 4), border = 0, ylim = c(-80, 80))
+map('world', col="#fddb88", fill=TRUE, bg="#69a2b1", lwd=0.05,
+mar=rep(0,4), border="#4f7d8b", ylim=c(-80,80))
 
-# Plot lines connecting each pair of origin and destination
-for(i in 1:nrow(top_20_routes)) {
-  plot_my_connection(
-    dep_lon = top_20_routes$long_origin[i],
-    dep_lat = top_20_routes$lat_origin[i],
-    arr_lon = top_20_routes$long_dest[i],
-    arr_lat = top_20_routes$lat_dest[i],
-    col = "skyblue",  # Line color
-    lwd = 1  # Line width
-  )
-}
-
-# Add points for origin airports
-points(x = top_20_routes$long_origin, y = top_20_routes$lat_origin, col = "slateblue", cex = 1, pch = 20)
-
-# Add points for destination airports
-points(x = top_20_routes$long_dest, y = top_20_routes$lat_dest, col = "red", cex = 1, pch = 20)
+```         
+#FF6B35
 ```
 
 ```{r}
@@ -438,32 +440,49 @@ plot_routes_ggplot <- function(routes_data) {
   # Get world map data
   world_map <- map_data("world")
   
-  # Create ggplot object
+  # Create ggplot 
   map_pounds <- ggplot() +
     # Add world map background
     geom_polygon(data = world_map, aes(x = long, y = lat, group = group),
-                 fill = "#f2f2f2", color = "white") +
+                 fill = "#FBDF96", color = "gray60") +
     
-    # Add curved lines for routes
+    # Add curved lines for routes (map to a variable for legend)
     geom_curve(data = routes_data, 
                aes(x = long_origin, y = lat_origin, 
-                   xend = long_dest, yend = lat_dest),
-               curvature = 0.2, color = "skyblue", size = 0.5) +
+                   xend = long_dest, yend = lat_dest,
+                   color = "#9AB88E"), 
+               curvature = 0.2, size = 0.5) +
     
-    # Add points for origin airports
-    geom_point(data = routes_data, aes(x = long_origin, y = lat_origin), 
-               color = "slateblue", size = 2) +
+    # Add points for origin airports (map to a variable for legend)
+    geom_point(data = routes_data, aes(x = long_origin, y = lat_origin, color = "Origin"), 
+               size = 2) +
     
-    # Add points for destination airports
-    geom_point(data = routes_data, aes(x = long_dest, y = lat_dest), 
-               color = "red", size = 2) +
-    
+    # Add points for destination airports (map to a variable for legend)
+    geom_point(data = routes_data, aes(x = long_dest, y = lat_dest, color = "Destination"), 
+               size = 2) +
     # Theme settings
     theme_minimal() +
     theme(axis.text = element_blank(),
           axis.ticks = element_blank(),
-          panel.grid = element_blank()) +
-    labs(title = "Top Air Freight Routes", x = "", y = "")
+          panel.grid = element_blank(),
+          panel.background = element_rect(fill = "#E0F2E9", color = NA),
+          panel.border = element_rect(colour = "#7C4B49", 
+                                      fill=NA, 
+                                      linewidth=5),
+          legend.position = c(.48, .033),
+          legend.justification = c("center"),
+          legend.direction = "horizontal",
+          legend.text = element_text(size = 10),
+          plot.margin = margin(20, 20, 40, 20)
+          ) +
+    
+    # Add the legend with proper labeling
+    scale_color_manual(values = c("Origin" = "#379634", 
+                                  "Destination" = "#DF367C"),
+                       name = " ") +
+    
+    labs(title = "Top Air Freight Routes by Non-Stop Segment Freight Transported (lbs)", 
+         x = "", y = "")
   
   return(map_pounds)
 }
@@ -472,8 +491,15 @@ plot_routes_ggplot <- function(routes_data) {
 route_map <- plot_routes_ggplot(top_20_routes)
 
 # Display the plot
-print(route_map)
+#print(route_map)
+
+route_map
 ```
+
+first value: Top margin (space above the plot). (second value): Right
+margin (space to the right of the plot). (third value): Bottom margin
+(space below the plot). (fourth value): Left margin (space to the left
+of the plot).
 
 # Plot big time line
 
@@ -586,21 +612,27 @@ print(country_plot)
 
 ### Plot timeline
 
+## Bar plot
+
 ```{r}
 top_5_countries <- freight_all %>%
   filter(!origin_country_name %in% "United States") %>%  
   count(origin_country_name, sort = TRUE) %>%  
-  slice_max(n, n = 5)  
+  slice_max(n, n = 10)  
 
-country_bar <- ggplot(top_5_countries, aes(x = reorder(origin_country_name, n), y = n, fill = origin_country_name)) +
+country_bar <- ggplot(top_5_countries, aes(x = reorder(origin_country_name, -n), y = n, fill = origin_country_name)) +
   geom_col(show.legend = FALSE) +  
-  coord_flip() +  
   labs(
-    title = "Top 5 Countries with the Most Freight Flights",
+    title = "Top 10 Countries with the Most Freight Flights",
     x = "Country",
     y = "Total Flights"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = "#E0F2E9", color = NA)) +
+  
+  # Use a color palette from RColorBrewer
+  scale_fill_brewer(palette = "Set3")  # Try "Set1", "Dark2", "Paired", etc.
+
 
 print(country_bar)
 
@@ -736,8 +768,8 @@ plot_base <- ggplot() +
                                             hjust = 0.5,
                                             margin = margin(t = 20)),
 
-    # Add margins and space to the plot
-    plot.margin = margin(b = 20, t = 50, r = 50, l = 50)
+   plot.margin = margin(t = 223, b = 447, r = 50, l = 50)
+
     
   )
 ```
@@ -749,33 +781,95 @@ plot_base
 ```{r}
 plot_base2 <- ggplot() +
   
-  # Add labels, subtitles, and caption to plot
-  labs(
-    title = "Airplanes & Freight",
-    subtitle = "Airplanes carry a lot of freight different places",
-    caption = "they can flY!"
-    ) +
-  
   # apply a completely empty theme ----
   theme_void()
+ 
 ```
 
 # Add elements together!
+
+##### Note about how the coords work
+
+left: The x-coordinate for the left edge of the inset (closer to 0 moves
+it left). right: The x-coordinate for the right edge of the inset
+(closer to 1 moves it right). top: The y-coordinate for the top edge of
+the inset (closer to 1 moves it upward). bottom: The y-coordinate for
+the bottom edge of the inset (closer to 0 moves it downward).
 
 ```{r}
 # Add them all together
 plot_final2 <- plot_base2 +
   
-  inset_element(route_map, left = 0.1, right = 0.9, top = 1, bottom = 0.55) +
-  inset_element(avg_year_timeline, left = 0.1, right = 0.45, top = 0.5, bottom = 0.28) +
-  inset_element(timeline, left = 0.1, right = 0.45, top = 0.28, bottom = 0.05) +
-  inset_element(country_bar, left = 0.5, right = 0.9, top = 0.5, bottom = 0.05)
+  # Map of the flight routes
+  inset_element(route_map, left = 0.1, right = 0.9, top = 1, bottom = 0.519) +
+  
+  # Bar plot of the top countries
+  inset_element(country_bar, left = 0.1, right = 0.9, top = 0.518, bottom = 0.05) +
+  
+  # Average year line chart
+  inset_element(avg_year_timeline, left = 0.1, right = 0.45, top = 0.05, bottom = 0.02) 
+  
+  # 20 year line chart
+ # inset_element(timeline, left = 0.1, right = 0.45, top = 0.28, bottom = 0.05) 
+  
+
+
+plot_final2
+```
+
+```{r}
+# TEST
+plot_final2 <- plot_base2 +
+  
+  # Map of the flight routes
+  inset_element(route_map, left = 0, right = 1, top = 1, bottom = 0.6) +
+  
+  # Bar plot of the top countries
+  inset_element(country_bar, left = 0, right = 1, top = 0.59, bottom = 0.35) +
+  
+  # Average year line chart
+  inset_element(avg_year_timeline, left = 0, right = 0.49, top = 0.34, bottom = 0) + 
+  
+  # 20 year line chart
+  inset_element(timeline, left = 0.51, right = 1, top = 0.34, bottom = 0) 
+  
+plot_final2
+
+```
+
+# TEST TEST TEST
+
+```{r}
+# Create a base plot with specific dimensions
+plot_base2 <- ggplot() +
+  theme_void() +
+  # Adding some margin to give breathing room
+  theme(plot.margin = margin(10, 10, 10, 10, "pt"),
+        panel.background = element_rect(fill = "#F7EDE2"))
 
 ```
 
 ```{r}
+
+# Create the final plot with properly proportioned insets
+plot_final2 <- plot_base2 +
+  
+  # Map of the flight routes - exactly top third
+  inset_element(route_map, left = 0, right = 1, top = 1, bottom = 0.57) +
+  
+  # Bar plot of the top countries - middle third
+  inset_element(country_bar, left = 0, right = 1, top = 0.6, bottom = 0.34) +
+ 
+  inset_element(timeline, left = 0, right = 1, top = 0.33, bottom = 0)
+  
 plot_final2
 ```
+
+```{r}
+ggsave("final_dashboard.png", plot_final2, width = 10, height = 15, dpi = 300)
+```
+
+# TEST TEST TEST
 
 ```{r}
 route_map
@@ -785,11 +879,11 @@ route_map
 plot_final3 <- plot_base2 +
   
   # Map takes the top half
-  inset_element(route_map, left = 0.05, right = 0.95, top = 1, bottom = 0.5) +
+  inset_element(route_map, left = 0.05, right = 0.95, top = 1, bottom = 0.1) +
   
   # Timeline plots side by side on the bottom
-  inset_element(avg_year_timeline, left = 0.05, right = 0.48, top = 0.5, bottom = 0) +
-  inset_element(timeline, left = 0.52, right = 0.95, top = 0.5, bottom = 0)
+  inset_element(avg_year_timeline, left = 0.05, right = 0.48, top = 0.2, bottom = 0) +
+  inset_element(timeline, left = 0.52, right = 0.95, top = 0.2, bottom = 0)
 
 
 print(plot_final3)
@@ -800,5 +894,43 @@ print(plot_final3)
 http://127.0.0.1:44185/graphics/ae1718f3-c166-44f9-ba9b-2d458e18c3e2.png
 
 ```{r}
-grid.arrange(timeline, avg_year_timeline, ncol = 1)
+grid.arrange(timeline, avg_year_timeline, route_map, ncol = 1)
 ```
+
+# TEST
+
+```{r}
+# Create a larger base plot with more empty space
+plot_base2 <- ggplot() + 
+  theme_void() +
+  theme(plot.background = element_rect(fill = "white", color = NA),
+        plot.margin = margin(20, 20, 20, 20))
+```
+
+```{r}
+library(rnaturalearth)
+library(ggplot2)
+library(sf)
+worldmap <- ne_countries(scale = 'medium', type = 'map_units',
+                         returnclass = 'sf')
+```
+
+```{r}
+worldmap_trans <- st_transform(worldmap, st_crs(3995))
+ggplot()+
+  geom_sf(data = worldmap)
+ggplot()+
+  geom_sf(data = worldmap_trans)
+```
+
+```{r}
+circle_map <- ggplot()+
+  geom_sf(data = worldmap)+
+  coord_sf(crs = sf::st_crs("ESRI:102016"))
+
+ggplot()+
+  geom_sf(data = worldmap_trans)+
+  coord_sf(crs = sf::st_crs("ESRI:102016"))
+```
+
+# TEST
