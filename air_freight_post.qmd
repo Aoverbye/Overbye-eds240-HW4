@@ -189,3 +189,177 @@ freight_coords <- freight_map_data %>%
             by = "iata_origin")
 ```
 
+### Refining the data for the map
+
+Before I could actually create the map, I had to get the data for the for the locations that had the most amount of freight in pounds traveling between them. I began by using the group_by dplyr function to tell the program that I wanted all the rows where freight was shipped between the same two airports to be treated as a single when I went to count the pounds of freight and create a new column for it using the mutate function. By using the distinct function, I was able to have only one row for each origin and destination combination, therefore avoiding having duplicates with the same amount of freight pounds at the end. 
+
+```{r}
+airport_routes <- freight_coords %>%
+  group_by(iata_origin, iata_dest) %>%
+  mutate(freight_shipped = sum(freight, na.rm = TRUE)) %>%  # Sum freight shipped for each route
+  ungroup() %>%  # Remove grouping after adding the freight count
+  distinct(iata_origin, iata_dest, .keep_all = TRUE) %>%  # Keep only unique routes
+  arrange(desc(freight_shipped)) 
+```
+
+```{r}
+# Filtering for the top 20 routes
+top_20_routes <- airport_routes %>%
+  arrange(desc(freight_shipped)) %>%
+  head(20)
+```
+
+### Plotting the map
+
+To create the map, I used ggplot. I used geom_curve to ensure the lines between the airports were curved and not just straight. 
+
+#### Explain Aesthetics here
+
+```{r}
+# Get world map data
+world_map <- map_data("world")
+
+# Create ggplot 
+map_pounds <- ggplot() +
+  # Add world map background
+  geom_polygon(data = world_map, aes(x = long, y = lat, group = group),
+               fill = "#FBDF96", color = "gray60") +
+  
+  # Add curved lines for routes (map to a variable for legend)
+  geom_curve(data = top_20_routes, 
+             aes(x = long_origin, y = lat_origin, 
+                 xend = long_dest, yend = lat_dest,
+                 color = "#9AB88E"), 
+             curvature = 0.2, size = 0.5) +
+  
+  # Add points for origin airports (map to a variable for legend)
+  geom_point(data = top_20_routes, aes(x = long_origin, y = lat_origin, color = "Origin"), 
+             size = 2) +
+  
+  # Add points for destination airports (map to a variable for legend)
+  geom_point(data = top_20_routes, aes(x = long_dest, y = lat_dest, color = "Destination"), 
+             size = 2) +
+  
+  # Theme settings
+  theme_minimal() +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank(),
+        panel.background = element_rect(fill = "#E0F2E9", color = NA),
+        panel.border = element_rect(colour = "#7C4B49", 
+                                    fill=NA, 
+                                    linewidth=5),
+        legend.position = c(.48, .033),
+        legend.justification = c("center"),
+        legend.direction = "horizontal",
+        legend.text = element_text(size = 10),
+        plot.margin = margin(20, 20, 40, 20)
+        ) +
+  
+  # Add the legend with proper labeling
+  scale_color_manual(values = c("Origin" = "#379634", 
+                                "Destination" = "#DF367C"),
+                     name = " ") +
+  
+  labs(title = "Top Air Freight Routes by Non-Stop Segment Freight Transported (lbs)", 
+       x = "", y = "")
+
+# Store the plot in a variable
+route_map <- map_pounds
+
+route_map
+
+```
+
+I enjoy looking at the map and imagining which planes might be coming from different areas. 
+
+# The bump chart 
+
+The data I am using includes information from 2004 all the way to 2024. For the basic map made above, I used information from all the years. However, where things are coming from and going to has almost certainly changed over the past 20 years. This is where I thought using a bump chart could ergonicimally show how things have shifted over the past several years. 
+
+### Refining the data for the bump chart
+
+The main hurdle I faced when doing this chart was deciding how I was going to tell the computer to separate the United States from other countries. While the map highlights origin and destination differences, I didn't want to do that here. The question I wanted this chart to answer was purely about what other countries are on either end of the arrival or depature with the most pounds of freight. 
+
+To do this, I simply told the computer to
+
+I did this using the **ifelse** function. If the country name of the origin was equal to the "United States," it tells the computer to use the destination country name. If the origin country is not equal to the United States, it tells the computer to use the origin name. This is how I told the computer to make a new column with the non-united states value. Once again, the summarize and sum functions were used to get the total amount of freight pounds. Lastly, I used the **group_by** function to tie tie the amount of freight to the year it was transported. For example, every year would have a row with "china" (or any other country), and the amount of freight tranported there in the year. 
+
+```{r}
+# Get the amount of freight based on the non us country 
+other_countries_col <- freight_all %>% 
+  mutate(other_country = ifelse(origin_country_name == "United States", dest_country_name, origin_country_name)) %>% 
+  group_by(other_country, year) %>%
+  summarize(total_freight = sum(freight, na.rm = TRUE))
+```
+
+**THEN I DID THIS TO RANK THE COUNTRIES and filter to year of interest**
+
+```{r}
+# Rank the number one countries by year
+country_rank_by_year <- other_countries_col %>%
+  filter(year >= 2019) %>% 
+  select(year, other_country, total_freight) %>% 
+  group_by(year) %>% 
+  mutate(
+    rank = row_number(desc(total_freight))
+  ) %>% 
+  ungroup() %>% 
+  arrange(rank, year)
+```
+
+```{r}
+# Filter for 2024
+top_countries_2024 <- country_rank_by_year %>% 
+  filter(year == 2024, rank <= 10) %>% 
+  pull(other_country)
+```
+
+# Create bump chart
+
+```{r}
+magma_pal <- viridisLite::magma(12)
+```
+
+
+```{r}
+country_rank_by_year %>%
+  filter(other_country %in% top_countries_2024) %>%
+  ggplot(aes(x = year, y = rank, color = other_country)) + 
+  geom_point(shape = "|", size = 6) + 
+  geom_bump(linewidth = 1) +
+  geom_text(
+    data = country_rank_by_year %>% 
+      filter(year == 2019, other_country %in% top_countries_2024),
+    aes(label = other_country),
+    hjust = 1,
+    nudge_x = -0.1
+  ) +
+  geom_text(
+    data = country_rank_by_year %>%  
+      filter(year == 2024, other_country %in% top_countries_2024),
+    aes(label = rank),
+    hjust = 0,
+    nudge_x = 0.1
+  )  +
+  annotate(
+    geom = "text",
+    x = c(2019, 2024),
+    y = c(-0.2, -0.2),
+    label = c("2019", "2024"),
+    hjust = c(0, 1),
+    vjust = 0,
+    size = 5) +
+  scale_y_reverse() +
+  scale_color_manual(values = magma_pal, guide = "none") +
+  coord_cartesian(xlim = c(2019, 2024), #make the plot smaller 
+                  ylim = c(11, 0.25), 
+                  clip = "off") +
+  theme(
+    axis.title = element_text(size = 12),
+    axis.text.y=element_blank(),
+    legend.position = "none"
+  ) +
+  theme_void()
+
+```
