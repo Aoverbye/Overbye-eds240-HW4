@@ -1,0 +1,191 @@
+---
+title: "The Blog Post"
+author: "Amanda Overbye"
+date: 03/13/2025
+toc: true
+editor_options: 
+  chunk_output_type: console
+editor: 
+  markdown: 
+    wrap: 72
+execute: 
+  eval: true
+  warning: false
+format:
+  html:
+    embed-resources: true
+    toc: true
+    code-fold: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, code_folding = FALSE)
+```
+
+```{r}
+# Load packages
+library(tidycensus)
+library(tidyverse)
+library(ggplot2)
+library(tmap)
+library(here)
+library(janitor)
+library(usdata)
+library(tigris)
+library(sf)
+library(scales)
+library(airportr)
+library(ggmap)
+library(maps)
+library(patchwork) 
+library(lubridate)
+library(gridExtra)
+library(ggalluvial)
+library(geosphere)
+library(waffle)
+library(showtext)
+library(ggbump)
+```
+
+
+# Creating an infographic using R data visualizations to answer questions about Air freight shipping. 
+
+I have been watching airplanes fly by all of my life. I have always found myself looking at the airplanes and wondering who or what is on those airplanes. I have been ordering stuff online for all of my adult life. I realize that the majority of items I order do not come from nearby and probably have undergone their own journeys to arrive in possession. 
+
+As a student in the Masters in Environmental Data Science program at the University of California Santa Barbara, I was given the opportunity to create some data visualizations on any topic of my choosing so I decided I would answer my mostly life long question about airplanes and shipping. I mainly wanted to know where are planes coming from and going to? How much do we actually ship via freight? How has this changed over time? This is a guide on how I created the visuals I used to answer these questions. 
+
+# Defintions and Background
+
+### Background on data 
+
+The data I am using comes from the department of transportation. Specifically, I used the [Air Carriers : T-100 International Segment for US carriers only data](https://www.transtats.bts.gov/Fields.asp?gnoyr_VQ=GDK). This data set contains information about all flights that are flying to and from the United States from international areas. The main variable I was interested in were those in regards to the amount of freight in pounds transported, and the departure and destination information. While the data included the International Air Transport Association, a 3 letter code given to airports based on location, it lacked any coordinate information. To gain the coordinate information, I used the airportr package and then combined the datasets. 
+
+### Data loading 
+
+### Function for reading in data
+
+```{r}
+# Function for reading in CSVs
+read <- function(year) {
+  file_name <- paste0("flights", year, ".csv") 
+  file_path <- here("data", file_name) 
+  
+  # Read and filter dataset
+  df <- read.csv(file_path) %>%
+    filter(FREIGHT != 0) %>% 
+    clean_names()
+  
+  return(df)
+}
+```
+
+### Reading in the data via the function
+
+```{r}
+# Read in data via function
+
+freight2024 <- read(2024)
+freight2023 <- read(2023)
+freight2022 <- read(2022)
+freight2021 <- read(2021)
+freight2020 <- read(2020)
+freight2019 <- read(2019)
+freight2018 <- read(2018)
+freight2017 <- read(2017)
+freight2016 <- read(2016)
+freight2015 <- read(2015)
+freight2014 <- read(2014)
+freight2013 <- read(2013)
+freight2012 <- read(2012)
+freight2011 <- read(2011)
+freight2010 <- read(2010)
+freight2009 <- read(2009)
+freight2008 <- read(2008)
+freight2007 <- read(2007)
+freight2006 <- read(2006)
+freight2005 <- read(2005)
+freight2004 <- read(2004)
+```
+
+### Function to join dfs
+
+```{r}
+# Create function to join datasets
+join_freight_data <- function(...) {
+  Reduce(full_join, list(...))
+}
+```
+
+### Joining the dfs via function
+
+```{r}
+# Use the function to join all datasets
+freight_all <- join_freight_data(
+  freight2004, freight2005, freight2006, freight2007, 
+  freight2008, freight2009, freight2010, freight2011, 
+  freight2012, freight2013, freight2014, freight2015, 
+  freight2016, freight2017, freight2018, freight2019, 
+  freight2020, freight2021, freight2022, freight2023, 
+  freight2024
+)
+```
+
+### Reading in the air coords data
+
+This data is not used for the rest of the code so I may add in the map section
+```{r}
+air_coords <- airports %>% 
+  clean_names()
+```
+
+# The Visualizations
+
+# The Map
+
+The first visualization I wanted to create was a map showing which airports had the largest amount of pounds traveling between them. While the map adequetly visualized the the connections between the airports, it should be noted that it does not accuretly show the route the planes took. For example, a plane flying from Ankorage Alaska to South Korea is most likely going to fly over the pacific ocean, not over the Atlantic, Africa and the rest of Asia. 
+
+### Data cleaning and combining for the map 
+```{r}
+# Rename origin and dest columns
+freight_map_data <- freight_all %>% 
+  rename(iata_origin = origin) %>% 
+  rename(iata_dest = dest)
+```
+
+```{r}
+# Duplicating iata coloumn
+air_coords$iata_origin = air_coords$iata
+
+# Renaming original iata column
+air_coords_rn <- air_coords %>% 
+  rename(iata_dest = iata)
+```
+
+```{r}
+# Duplicate and rename lat longs
+air_coords_rn$lat_dest = air_coords_rn$latitude
+air_coords_rn$long_dest = air_coords_rn$longitude
+```
+
+```{r}
+# Rename original lat longs
+air_duocoords <- air_coords_rn %>% 
+  rename(lat_origin = latitude) %>% 
+  rename(long_origin = longitude)
+```
+
+### Joining the data
+
+This is where I joined the edited freight data with the airport coordinate data. 
+```{r}
+# Join freight_all with air_duocoords to get destination coordinates
+freight_coords <- freight_map_data %>%
+  left_join(air_duocoords %>%
+              select(iata_dest, lat_dest, long_dest), 
+            by = "iata_dest") %>%
+  # Join again to get origin coordinates
+  left_join(air_duocoords %>%
+              select(iata_origin, lat_origin, long_origin), 
+            by = "iata_origin")
+```
+

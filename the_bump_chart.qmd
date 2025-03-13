@@ -139,6 +139,12 @@ top2016 <- salary_rank_by_year |>
 
 ```
 
+## color copy 
+
+```{r}
+magma_pal <- viridisLite::magma(12)
+```
+
 # COPY
 
 **Note to self to help thinking** 
@@ -177,7 +183,7 @@ top_countries_2024 <- country_rank_by_year %>%
 
 # Filter for 2019
 #top_countries_2019 <- country_rank_by_year %>% 
-  #filter(year == 2019, rank <= 10)
+#filter(year == 2019, rank <= 10)
 ```
 
 # Create bump chart
@@ -190,24 +196,38 @@ country_rank_by_year %>%
   geom_point(shape = "|", size = 6) + 
   geom_bump(linewidth = 1) +
   geom_text(
-    data = country_rank_by_year |> filter(year == 2019, other_country %in% top_countries_2024),
-    aes(label = other_country)
+    data = country_rank_by_year %>% 
+      filter(year == 2019, other_country %in% top_countries_2024),
+    aes(label = other_country),
+    hjust = 1,
+    nudge_x = -0.1
   ) +
-   geom_text(
-    data = country_rank_by_year |> filter(year == 2024, other_country %in% top_countries_2024),
-    aes(label = rank)
+  geom_text(
+    data = country_rank_by_year %>%  
+      filter(year == 2024, other_country %in% top_countries_2024),
+    aes(label = rank),
+    hjust = 0,
+    nudge_x = 0.1
   )  +
-    scale_y_reverse() +
+  annotate(
+    geom = "text",
+    x = c(2019, 2024),
+    y = c(-0.2, -0.2),
+    label = c("2019", "2024"),
+    hjust = c(0, 1),
+    vjust = 0,
+    size = 5) +
+  scale_y_reverse() +
+  scale_color_manual(values = magma_pal, guide = "none") +
   coord_cartesian(xlim = c(2019, 2024), #make the plot smaller 
                   ylim = c(11, 0.25), 
-                  clip = "off")
-  
-  theme_minimal() +
+                  clip = "off") +
   theme(
-    axis.text.y = element_text(size = 10),
     axis.title = element_text(size = 12),
-    legend.position = "none"  # Remove legend if it's not necessary
-  )
+    axis.text.y=element_blank(),
+    legend.position = "none"
+  ) +
+  theme_void()
 
 ```
 
