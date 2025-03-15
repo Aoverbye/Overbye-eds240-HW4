@@ -213,60 +213,63 @@ top_20_routes <- airport_routes %>%
 
 To create the map, I used ggplot. I used geom_curve to ensure the lines between the airports were curved and not just straight. 
 
+=
 #### Explain Aesthetics here
 
 ```{r}
+# Define an aviation-themed color palette
+aviation_pal <- c("#1E3A8A", "#3B82F6", "#60A5FA", "#93C5FD",  
+                  "#6366F1", "#EAB308", "#FACC15", "#F97316",  
+                  "#64748B", "#94A3B8", "#CBD5E1", "#E5E7EB")
+
 # Get world map data
 world_map <- map_data("world")
 
 # Create ggplot 
 map_pounds <- ggplot() +
-  # Add world map background
+  # Add world map background with aviation theme
   geom_polygon(data = world_map, aes(x = long, y = lat, group = group),
-               fill = "#FBDF96", color = "gray60") +
+               fill = "#CBD5E1", color = "#CBD5E1") +  # Light gray-blue for land with slightly darker borders
   
-  # Add curved lines for routes (map to a variable for legend)
+  # Add curved lines for routes
   geom_curve(data = top_20_routes, 
              aes(x = long_origin, y = lat_origin, 
-                 xend = long_dest, yend = lat_dest,
-                 color = "#9AB88E"), 
-             curvature = 0.2, size = 0.5) +
+                 xend = long_dest, yend = lat_dest),
+             color = "#3B82F6",  # Medium blue for flight paths
+             curvature = 0.2, size = .5, alpha = 0.8) +
   
-  # Add points for origin airports (map to a variable for legend)
+  # Add points for origin airports
   geom_point(data = top_20_routes, aes(x = long_origin, y = lat_origin, color = "Origin"), 
-             size = 2) +
+             size = 1) +
   
-  # Add points for destination airports (map to a variable for legend)
+  # Add points for destination airports
   geom_point(data = top_20_routes, aes(x = long_dest, y = lat_dest, color = "Destination"), 
-             size = 2) +
+             size = 1) +
   
-  # Theme settings
+  # Theme settings matching the bump chart style
   theme_minimal() +
   theme(axis.text = element_blank(),
         axis.ticks = element_blank(),
         panel.grid = element_blank(),
-        panel.background = element_rect(fill = "#E0F2E9", color = NA),
-        panel.border = element_rect(colour = "#7C4B49", 
-                                    fill=NA, 
-                                    linewidth=5),
-        legend.position = c(.48, .033),
+
+        legend.position = c(.48, .013),
         legend.justification = c("center"),
         legend.direction = "horizontal",
-        legend.text = element_text(size = 10),
-        plot.margin = margin(20, 20, 40, 20)
+        legend.text = element_text(size = 10, face = "bold"),
+        plot.title = element_text(size = 14, face = "bold"),
+        plot.margin = margin(20, 50, 20, 50)
         ) +
   
-  # Add the legend with proper labeling
-  scale_color_manual(values = c("Origin" = "#379634", 
-                                "Destination" = "#DF367C"),
+  # Add the legend with colors from aviation palette
+  scale_color_manual(values = c("Origin" = "#EAB308",  # Gold for origin points (resembles takeoff)
+                                "Destination" = "#F97316"),  # Orange for destination points (resembles landing)
                      name = " ") +
   
-  labs(title = "Top Air Freight Routes by Non-Stop Segment Freight Transported (lbs)", 
+  labs(title = "Top Air-Freight Connections", 
        x = "", y = "")
 
 # Store the plot in a variable
 route_map <- map_pounds
-
 route_map
 
 ```
@@ -283,7 +286,7 @@ The main hurdle I faced when doing this chart was deciding how I was going to te
 
 To do this, I simply told the computer to
 
-I did this using the **ifelse** function. If the country name of the origin was equal to the "United States," it tells the computer to use the destination country name. If the origin country is not equal to the United States, it tells the computer to use the origin name. This is how I told the computer to make a new column with the non-united states value. Once again, the summarize and sum functions were used to get the total amount of freight pounds. Lastly, I used the **group_by** function to tie tie the amount of freight to the year it was transported. For example, every year would have a row with "china" (or any other country), and the amount of freight tranported there in the year. 
+I did this using the **ifelse** function. If the country name of the origin was equal to the "United States," it tells the computer to use the destination country name. If the origin country is not equal to the United States, it tells the computer to use the origin name. This is how I told the computer to make a new column with the non-united states value. Once again, the summarize and sum functions were used to get the total amount of freight pounds. Lastly, I used the **group_by** function to tie tie the amount of freight to the year it was transported. For example, every year would have a row with "china" (or any other country), and the amount of freight transported there in the year. 
 
 ```{r}
 # Get the amount of freight based on the non us country 
@@ -292,8 +295,6 @@ other_countries_col <- freight_all %>%
   group_by(other_country, year) %>%
   summarize(total_freight = sum(freight, na.rm = TRUE))
 ```
-
-**THEN I DID THIS TO RANK THE COUNTRIES and filter to year of interest**
 
 ```{r}
 # Rank the number one countries by year
@@ -315,51 +316,129 @@ top_countries_2024 <- country_rank_by_year %>%
   pull(other_country)
 ```
 
-# Create bump chart
+### Plotting the bump chart
+
+The reasoning behind using a bump chart for this visualization is not only because it can display the information accurately, but also because it gives a sense of flow and travel. One of the key themes I want on my visualization is a sense of movement and forward flow. 
 
 ```{r}
-magma_pal <- viridisLite::magma(12)
+# Define an aviation-themed color palette
+aviation_pal <- c("#1E3A8A", "#3B82F6", "#60A5FA", "#93C5FD",  
+                  "#6366F1", "#EAB308", "#FACC15", "#F97316",  
+                  "#64748B", "#94A3B8", "#CBD5E1", "#E5E7EB")  
 ```
 
-
 ```{r}
-country_rank_by_year %>%
-  filter(other_country %in% top_countries_2024) %>%
-  ggplot(aes(x = year, y = rank, color = other_country)) + 
-  geom_point(shape = "|", size = 6) + 
-  geom_bump(linewidth = 1) +
+ggplot(country_rank_by_year %>% filter(other_country %in% top_countries_2024), 
+       aes(x = year, y = rank, color = other_country)) + 
+
+  # Add smooth curved lines
+  geom_bump(linewidth = 1.5) +
+
+  # Add points for better visibility
+  geom_point(size = 4) +
+
+  # Left-side country labels (adjusted positioning)
   geom_text(
-    data = country_rank_by_year %>% 
-      filter(year == 2019, other_country %in% top_countries_2024),
-    aes(label = other_country),
-    hjust = 1,
-    nudge_x = -0.1
+    data = country_rank_by_year %>% filter(year == 2019, other_country %in% top_countries_2024),
+    aes(label = other_country), 
+    hjust = 1, 
+    nudge_x = -0.15, 
+    size = 5, 
+    fontface = "bold"
   ) +
+
+  # Right-side rank labels (adjusted positioning)
   geom_text(
-    data = country_rank_by_year %>%  
-      filter(year == 2024, other_country %in% top_countries_2024),
-    aes(label = rank),
-    hjust = 0,
-    nudge_x = 0.1
-  )  +
-  annotate(
-    geom = "text",
-    x = c(2019, 2024),
-    y = c(-0.2, -0.2),
-    label = c("2019", "2024"),
-    hjust = c(0, 1),
-    vjust = 0,
-    size = 5) +
+    data = country_rank_by_year %>% filter(year == 2024, other_country %in% top_countries_2024),
+    aes(label = rank), 
+    hjust = 0, 
+    nudge_x = 0.15, 
+    size = 5, 
+    fontface = "bold"
+  ) +
+
+  # Reverse y-axis for ranking (1st place at the top)
   scale_y_reverse() +
-  scale_color_manual(values = magma_pal, guide = "none") +
-  coord_cartesian(xlim = c(2019, 2024), #make the plot smaller 
-                  ylim = c(11, 0.25), 
-                  clip = "off") +
+
+  # Apply aviation color palette
+  scale_color_manual(values = aviation_pal, guide = "none") +
+
+  # Adjust boundaries to prevent cutoff
+  coord_cartesian(xlim = c(2018.9, 2024.1), ylim = c(11, 0.5), clip = "off") +
+  
+  labs(title = "Top 10 Air-Freight Trade Partners of the U.S") +
+  
+  # Aesthetic improvements
+  theme_minimal() +
   theme(
-    axis.title = element_text(size = 12),
-    axis.text.y=element_blank(),
-    legend.position = "none"
-  ) +
-  theme_void()
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.title = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 14, face = "bold"),
+    legend.position = "none",
+    plot.margin = margin(20, 50, 20, 100) # Increased margins
+  )
 
 ```
+
+# Creating the timeline
+
+After creating the bump chart, my next goal was to create a timeline that showed how the amount of freight in pounds has changed over the past 20 years. When I was thinking of how to put all of the elements together, I originally wanted the bump chart and the timeline to focus on the same amount of years. However, when I lengthened the timeframe of the bump chart, the information got harder to follow and it lost its use in conveying information. When I tried to shorten the timeline, certain events like the freight recession, became less noticable. Ultimetly, I decided it was better and more interesting if the plots focused on different years.
+
+### Refining the data for the timeline
+
+The data for the timeline was the easiest to handle because all I really needed to do was ensure thaqt the date-time format was correct, then I could group and plot with ease.
+
+```{r}
+# Convert year and month into a proper date format
+freight_all <- freight_all %>%
+  mutate(date = make_date(year, month, 1))
+```
+
+```{r}
+# Aggregate freight by month
+freight_month <- freight_all %>%
+  group_by(year, month) %>%
+  summarise(total_freight = sum(freight, na.rm = TRUE), .groups = "drop") %>%
+  mutate(date = make_date(year, month, 1)) 
+```
+
+### Plotting the timeline
+
+Plotting the timeline involved making some of the harder visual decisions. I wanted to show the lines for each year, but I was afraid that would take away from the general cohesiveness of all the elements put together. Ultimately, I think it worked out but it was challenging for me to figure out how I could make it cohesive.
+
+```{r}
+timeline <- 
+  ggplot(freight_month, aes(x = date, y = total_freight)) +
+  geom_smooth(color = "#1E3A8A", size = 1, span = 0.1, se = FALSE) +
+  scale_x_date(date_labels = "%Y", date_breaks = "24 months") +  
+  scale_y_continuous(
+    labels = scales::label_number(scale = 1e-3, suffix = "K lb", big.mark = ",")  
+  ) +
+  labs(title = "Pounds of Air-Freight Moved To and From The USA",
+       x = "",
+       y = "") +  
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 12, face = "bold", hjust = 0.5),  # Match bump chart title
+    axis.text.x = element_text(size = 10, face = "bold", angle = 45, hjust = 1),  
+    axis.text.y = element_text(size = 10, face = "bold"),  
+    panel.grid.major.y = element_blank(),  
+    panel.grid.minor.y = element_blank(),  
+    panel.grid.major.x = element_line(color = "lightgray", linewidth = 0.5),  
+    plot.margin = margin(20, 50, 20, 50)  # Ensure proper spacing
+  ) 
+
+print(timeline)
+
+```
+
+# The final visuals
+
+Once all those pieces were finished, I used google slides to put to final pieces together. 
+
+![The final product:](final_infograph.png)
+
+And that is how I made the pieces of this infographic
